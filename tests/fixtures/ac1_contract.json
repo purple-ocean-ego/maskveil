@@ -1,0 +1,78 @@
+{
+  "_comment": "AC1 で確定したノード I/O 契約（SPEC の外に置く独立した正）。SPEC.md を写し間違えた場合はテストが落ちる。",
+  "nodes": {
+    "HotscreenDetector": {
+      "title": "Hotscreen Detector",
+      "inputs": [
+        {"name": "image", "type": "IMAGE", "required": true, "widget": null},
+        {"name": "model", "type": "COMBO", "required": true, "widget": "combo"},
+        {"name": "classes", "type": "STRING", "required": true, "widget": "text", "default": "FEMALE_GENITALIA_EXPOSED,MALE_GENITALIA_EXPOSED"},
+        {"name": "conf", "type": "FLOAT", "required": true, "widget": "number", "default": 0.2, "min": 0.0, "max": 1.0, "step": 0.01},
+        {"name": "iou", "type": "FLOAT", "required": true, "widget": "number", "default": 0.45, "min": 0.0, "max": 1.0, "step": 0.01},
+        {"name": "top_k", "type": "INT", "required": true, "widget": "number", "default": 0, "min": 0, "max": 300, "step": 1},
+        {"name": "mask_expand", "type": "INT", "required": true, "widget": "number", "default": 0, "min": 0, "max": 256, "step": 1},
+        {"name": "preview_mode", "type": "COMBO", "required": true, "widget": "combo", "default": "outline", "options": ["outline", "crop", "none"]}
+      ],
+      "outputs": [
+        {"name": "hotscreen", "type": "HOTSCREEN"},
+        {"name": "mask", "type": "MASK"},
+        {"name": "segs", "type": "SEGS"},
+        {"name": "detection", "type": "STRING"},
+        {"name": "preview", "type": "IMAGE"}
+      ]
+    },
+    "HotscreenRefiner": {
+      "title": "Hotscreen Refiner",
+      "inputs": [
+        {"name": "hotscreen", "type": "HOTSCREEN", "required": true, "widget": null},
+        {"name": "refiner_model", "type": "COMBO", "required": true, "widget": "combo"},
+        {"name": "refiner_classes", "type": "STRING", "required": true, "widget": "text", "default": "all"},
+        {"name": "conf", "type": "FLOAT", "required": true, "widget": "number", "default": 0.2, "min": 0.0, "max": 1.0, "step": 0.01},
+        {"name": "iou", "type": "FLOAT", "required": true, "widget": "number", "default": 0.45, "min": 0.0, "max": 1.0, "step": 0.01},
+        {"name": "seg_crop", "type": "BOOLEAN", "required": true, "widget": "toggle", "default": false},
+        {"name": "mask_expand", "type": "INT", "required": true, "widget": "number", "default": 0, "min": 0, "max": 256, "step": 1},
+        {"name": "preview_mode", "type": "COMBO", "required": true, "widget": "combo", "default": "outline", "options": ["outline", "crop", "none"]}
+      ],
+      "outputs": [
+        {"name": "hotscreen", "type": "HOTSCREEN"},
+        {"name": "mask", "type": "MASK"},
+        {"name": "refine", "type": "STRING"},
+        {"name": "preview", "type": "IMAGE"}
+      ]
+    },
+    "MosaicByMask": {
+      "title": "Mosaic by Mask",
+      "inputs": [
+        {"name": "mode", "type": "COMBO", "required": true, "widget": "combo", "default": "mosaic", "options": ["mosaic", "blur", "black"]},
+        {"name": "block_size", "type": "INT", "required": true, "widget": "number", "default": 48, "min": 2, "max": 128, "step": 1},
+        {"name": "hotscreen", "type": "HOTSCREEN", "required": false, "widget": null},
+        {"name": "image", "type": "IMAGE", "required": false, "widget": null},
+        {"name": "mask", "type": "MASK", "required": false, "widget": null}
+      ],
+      "outputs": [
+        {"name": "image", "type": "IMAGE"},
+        {"name": "hotscreen", "type": "HOTSCREEN"}
+      ]
+    }
+  },
+  "hotcreen_keys": ["schema_version", "image", "mosaic_image", "mask", "detections", "meta"],
+  "detection_extra_keys": ["batch_index", "expanded_px"],
+  "segs_fields": [
+    "cropped_image",
+    "cropped_mask",
+    "confidence",
+    "crop_region",
+    "bbox",
+    "label",
+    "control_net_wrapper"
+  ],
+  "core_apis": [
+    "rasterize_polygons",
+    "dilate_mask",
+    "expand_detections",
+    "compose_masks",
+    "apply_censor",
+    "draw_outline",
+    "crop_union"
+  ]
+}

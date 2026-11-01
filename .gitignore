@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# ツールのキャッシュ
+.pytest_cache/
+.ruff_cache/
+
+# モデル（非同梱。利用者が任意の場所から絶対パスで指定する）
+*.onnx
+
+# 作業用（セッション状態・調査メモ）
+.session/
+.local/

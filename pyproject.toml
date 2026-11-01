@@ -1,0 +1,27 @@
+[project]
+name = "hotscreen-censor"
+version = "0.1.0"
+description = "NSFW region detection (hotscreen YOLO11) and shape-following mask refinement (YOLO11-Seg) for ComfyUI"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "onnxruntime>=1.16",
+  "pillow>=10",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["maskveil"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
