@@ -10,6 +10,9 @@ venv/
 # ツールのキャッシュ
 .pytest_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # モデル（非同梱。利用者が任意の場所から絶対パスで指定する）
 *.onnx
