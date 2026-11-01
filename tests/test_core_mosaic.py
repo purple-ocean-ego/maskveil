@@ -143,7 +143,7 @@ def test_blur_radius_changes_result() -> None:
 def test_mask_threshold_is_positive_not_half() -> None:
     image = _ramp(4, 4)
     soft_mask = np.zeros((4, 4), dtype=np.float32)
-    soft_mask[0, 0] = 0.3  # 0.5 未満でも「マスクあり」として扱う（SPEC §6-6）
+    soft_mask[0, 0] = 0.3  # 0.5 未満でも「マスクあり」として扱う
     output = apply_censor(image, soft_mask, "black", 2)
 
     assert float(output[0, 0].sum()) == 0.0

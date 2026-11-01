@@ -1,4 +1,4 @@
-"""`HOTSCREEN` エンベロープの組み立てと検証（SPEC §3-4 / §3-5 / §3-7）。
+"""`HOTSCREEN` エンベロープの組み立てと検証。
 
 `HOTSCREEN` は dict であり、`image` を不変に保つことが唯一の不変条件である。
 本モジュールは「dict を作る／読む」処理だけを持ち、推論や加工は行わない。
@@ -141,7 +141,7 @@ def detection_to_dict(
         `DETECTION_KEYS` の順序を持つ dict。
     """
     # 丸めは JSON 化（detection_json）のときだけ行う。メモリ上の dict は生値で持ち、
-    # Refiner が戻して再ラスタ化しても座標がずれないようにする（SPEC §3-2）。
+    # Refiner が戻して再ラスタ化しても座標がずれないようにする。
     masks = None
     if detection.masks is not None:
         masks = [[[float(x), float(y)] for x, y in polygon] for polygon in detection.masks]
@@ -203,7 +203,7 @@ def detection_json(
     params: dict[str, Any],
     detections: list[dict[str, Any]],
 ) -> str:
-    """`detection` 出力（STRING）を組み立てる（SPEC §3-7）。
+    """`detection` 出力（STRING）を組み立てる。
 
     CLI 版との差分は「`image` を持たない」「`source` を持つ」「`model.path` が相対パス」
     「`params` に `top_k` / `mask_expand` を持つ」の4点。

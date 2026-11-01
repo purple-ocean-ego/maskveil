@@ -1,4 +1,4 @@
-"""`HotscreenDetector` ノード（SPEC §4-2）。
+"""`HotscreenDetector` ノード。
 
 `core` の推論 API を呼び、`HOTSCREEN` / `MASK` / `SEGS` / `detection` / `preview` を
 組み立てるだけの薄いアダプタ。判断ロジックは `core` に置く。
@@ -36,7 +36,7 @@ class HotscreenDetector:
 
     @classmethod
     def INPUT_TYPES(cls) -> dict[str, dict[str, tuple]]:
-        """ComfyUI の入力定義（SPEC §4-2 の `spec-io` を写経）。"""
+        """ComfyUI の入力定義。"""
         return {
             "required": {
                 "image": ("IMAGE",),

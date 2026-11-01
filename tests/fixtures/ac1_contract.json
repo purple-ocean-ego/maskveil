@@ -1,5 +1,5 @@
 {
-  "_comment": "AC1 で確定したノード I/O 契約（SPEC の外に置く独立した正）。SPEC.md を写し間違えた場合はテストが落ちる。",
+  "_comment": "AC1 で確定したノード I/O 契約。実装との不一致はテストが落ちる。",
   "nodes": {
     "HotscreenDetector": {
       "title": "Hotscreen Detector",

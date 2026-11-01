@@ -1,4 +1,4 @@
-"""`MosaicByMask` ノード（SPEC §4-4 / §6）。
+"""`MosaicByMask` ノード。
 
 **判断処理を持たない**（`classes` / `conf` / `threshold` / `mask_margin` を持たず、
 `detections` も参照しない）。受け取ったマスクをそのまま適用するだけのノード。
@@ -28,7 +28,7 @@ class MosaicByMask:
 
     @classmethod
     def INPUT_TYPES(cls) -> dict[str, dict[str, tuple]]:
-        """ComfyUI の入力定義（SPEC §4-4 の `spec-io` を写経）。"""
+        """ComfyUI の入力定義。"""
         return {
             "required": {
                 "mode": (list(CENSOR_MODES), {"default": "mosaic"}),
@@ -90,7 +90,7 @@ class MosaicByMask:
             )
 
         frames = image_to_numpy(base)
-        # 加工は「受け取ったマスクをそのまま適用」なので二値化しない（SPEC §6-6）
+        # 加工は「受け取ったマスクをそのまま適用」なので二値化しない
         bitmap = mask_to_float(mask_tensor)
         batch_size, height, width = frames.shape[0], frames.shape[1], frames.shape[2]
         if bitmap.shape[0] not in (1, batch_size):

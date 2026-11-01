@@ -1,4 +1,4 @@
-"""`preview` 出力（outline / crop / none）の組み立て（SPEC §4-2-2）。
+"""`preview` 出力（outline / crop / none）の組み立て。
 
 `preview` は**表示専用**であり、`HOTSCREEN` / `MASK` の計算結果には影響しない。
 バッチ運用では `none`（＝入力をそのまま返す）を推奨する。
@@ -49,7 +49,7 @@ def build_preview(
     for item in detections:
         grouped.setdefault(int(item["batch_index"]), []).append(dict_to_detection(item))
 
-    # core の描画・クロップ API は float32 0–1 を要求する（SPEC §2-1）
+    # core の描画・クロップ API は float32 0–1 を要求する
     normalized = rgb_u8.astype(np.float32) / 255.0
 
     if mode == "crop":

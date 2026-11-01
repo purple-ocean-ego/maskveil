@@ -53,8 +53,6 @@ def test_tools_do_not_import_comfy() -> None:
     assert violations == {}
 
 
-@pytest.mark.parametrize(
-    "module", ["maskveil.core.labels", "maskveil.core.geometry"]
-)
+@pytest.mark.parametrize("module", ["maskveil.core.labels", "maskveil.core.geometry"])
 def test_core_modules_are_importable(module: str) -> None:
     __import__(module)

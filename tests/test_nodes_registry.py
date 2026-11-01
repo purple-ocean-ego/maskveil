@@ -2,7 +2,7 @@
 
 ComfyUI のノード一覧に載るために必要な属性（`NODE_CLASS_MAPPINGS` / `CATEGORY` /
 `FUNCTION` / `INPUT_TYPES` / `RETURN_TYPES` / `WEB_DIRECTORY`）を、
-`tests/fixtures/ac1_contract.json`（SPEC の外にある独立した契約）と突き合わせる。
+`tests/fixtures/ac1_contract.json`と突き合わせる。
 
 `folder_paths` は ComfyUI 本体が提供するためスタブを差し込み、
 「ノード側が ComfyUI の実 API をどう使うか」だけを検証する。
@@ -95,7 +95,7 @@ def test_input_types_match_contract(key: str) -> None:
         assert required is expected["required"], f"{key}.{name}: required 不一致"
 
         if expected["type"] == "COMBO":
-            # 写像規則（SPEC §4-1）: COMBO は選択肢そのものが型文字列の位置に入る
+            # 写像規則: COMBO は選択肢そのものが型文字列の位置に入る
             options = list(spec[0])
             if "options" in expected:
                 assert options == expected["options"], f"{key}.{name}: 選択肢不一致"
@@ -119,7 +119,7 @@ def test_detector_model_input_is_onnx_only() -> None:
         "det/hs-real-anime-y11n-640-fp32.onnx",
         "seg/nsfw-anime-xl-x1280.onnx",
     ]
-    # COMBO の既定値は先頭要素（SPEC §4-1）なので、default キーは持たない
+    # COMBO の既定値は先頭要素なので、default キーは持たない
     assert len(model_spec) == 1
 
 

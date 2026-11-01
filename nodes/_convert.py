@@ -1,4 +1,4 @@
-"""ComfyUI のテンソルと numpy 配列の相互変換（SPEC §3-8）。
+"""ComfyUI のテンソルと numpy 配列の相互変換。
 
 `core/` は device 概念を持たないため、device / dtype の復元はすべてここで行う。
 """
@@ -62,7 +62,7 @@ def mask_to_numpy(mask: torch.Tensor) -> np.ndarray:
     """`MASK` テンソルを bool マスクへ変換する（`> 0.5`、`[H,W]` は `[1,H,W]` に揃える）。
 
     検出系（`Detector` / `Refiner` の出力を再度ラスタ化する経路）向け。
-    **加工系は `mask_to_float()` を使う**（0.5 で切ると SPEC §6-6 の `mask > 0.0` と矛盾する）。
+    **加工系は `mask_to_float()` を使う**（0.5 で切ると `mask > 0.0` の判定と矛盾する）。
 
     Args:
         mask: `[B, H, W]` または `[H, W]`。
@@ -85,7 +85,7 @@ def mask_to_float(mask: torch.Tensor) -> np.ndarray:
     """`MASK` テンソルを float32 マスクへ変換する（**二値化しない**）。
 
     `MosaicByMask` は受け取ったマスクをそのまま適用し、適用条件は `core` 側の
-    `> 0.0` だけである（SPEC §6-6）。ここで 0.5 の閾値をかけると、
+    `> 0.0` だけである。ここで 0.5 の閾値をかけると、
     0 < v <= 0.5 のソフトマスクが無言で無視されてしまう。
 
     Args:

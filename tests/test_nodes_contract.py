@@ -155,12 +155,12 @@ def test_mask_expand_grows_mask_but_not_bbox() -> None:
     expected = dilate_mask(rasterize_polygons(SQUARE_MASKS, 32, 24), 4).sum()
     assert int(raw_mask.sum()) == 8 * 9  # ポリゴン (2,3)-(10,12)
     assert int(grown_mask.sum()) == int(expected)  # core の膨張と一致（形状も含めて一致）
-    # bbox は膨張の影響を受けない（SPEC §3-5）
+    # bbox は膨張の影響を受けない
     assert envelope["detections"][0]["bbox"] == [2.0, 3.0, 10.0, 12.0]
 
 
 def test_detection_dict_keeps_raw_coordinates() -> None:
-    """メモリ上の dict は生値、JSON は丸め（SPEC §3-2 の「JSON 化時のみ丸める」）。"""
+    """メモリ上の dict は生値、JSON は丸め。"""
     fractional = Detection(
         class_id=3,
         class_name="FEMALE_GENITALIA_EXPOSED",

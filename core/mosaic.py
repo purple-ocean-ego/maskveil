@@ -1,7 +1,7 @@
 """マスクによる隠蔽加工（モザイク / ぼかし / 黒塗り）。numpy のみ。
 
 すべて `float32 0–1` のまま処理し、8bit 量子化は保存時に行う（`nodes` の責務）。
-`mask > 0.0` の比較だけを適用条件とし、閾値の調整や判断は行わない（SPEC §6-6）。
+`mask > 0.0` の比較だけを適用条件とし、閾値の調整や判断は行わない。
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ def _mosaic(image: np.ndarray, bitmap: np.ndarray, block_size: int) -> np.ndarra
     """マスクが1画素でも掛かるブロックを、そのブロックの平均色で置換する。
 
     触れたブロックだけをスライス単位で置換する（全画素分の中間配列を作らない）。
-    ブロック平均は**マスク外の画素も含めた**ブロック全体の平均である（SPEC §6-3）。
+    ブロック平均は**マスク外の画素も含めた**ブロック全体の平均である。
     """
     height, width = bitmap.shape
     rows, cols = np.nonzero(bitmap)

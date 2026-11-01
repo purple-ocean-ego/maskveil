@@ -62,7 +62,7 @@ def _rect_mask(bbox: tuple[float, float, float, float], height: int, width: int)
 def draw_outline(image: np.ndarray, detections: list[Detection]) -> np.ndarray:
     """元画像に検出マスクの輪郭をクラス別の色で描く。
 
-    `masks` が無い検出は **bbox 矩形**の輪郭を描く（SPEC §4-2-2）。
+    `masks` が無い検出は **bbox 矩形**の輪郭を描く。
 
     Args:
         image: `float32[H, W, C]`（0.0–1.0）。

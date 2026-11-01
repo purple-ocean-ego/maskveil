@@ -1,4 +1,4 @@
-"""`SEGS`（Impact Pack 互換）の組み立て（SPEC §3-6）。
+"""`SEGS`（Impact Pack 互換）の組み立て。
 
 Impact Pack が無い環境でも出力できるよう、互換構造を自前で作る。
 `SEGS` は**互換ビュー**であり、正は `HOTSCREEN` である。
