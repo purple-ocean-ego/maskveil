@@ -52,7 +52,7 @@ SUPPORTED_INPUT_SCHEMAS = (1, 2)
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m maskveil.tools.refine",
+        prog="maskveil-refine",
         description="検出JSON（stdin）の検出へ形状マスクを付与し、JSON（stdout）で返す。",
     )
     parser.add_argument(

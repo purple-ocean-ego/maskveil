@@ -1,39 +1,41 @@
-"""maskveil — ComfyUI カスタムノードパッケージ。
+"""maskveil — 領域を検出し、マスクで隠すエンジン。
 
-`core/`（純ロジック）と `tools/`（CLI）に加え、`nodes/`（ComfyUI アダプタ）を公開する。
-ComfyUI 以外（CLI・単体テスト）では `torch` / `folder_paths` が無いため、
-その場合だけノードの公開を見送る（`core` / `tools` は従来どおり動く）。
+`core/`（純ロジック）と `tools/`（CLI）に加え、ComfyUI 用の `nodes/` を提供する。
+
+ComfyUI はパッケージ属性 `NODE_CLASS_MAPPINGS` / `NODE_DISPLAY_NAME_MAPPINGS` /
+`WEB_DIRECTORY` を参照してノードを登録する。これらは**参照されたときに初めて**
+`nodes/` を読み込む（PEP 562 のモジュール `__getattr__`）。
+
+この遅延読み込みにより:
+
+- CLI（`maskveil` / `maskveil-detect` / `maskveil-refine`）の起動時に
+  `torch` を探しに行かない（ComfyUI の無い環境で警告も出ない・起動が速い）
+- `torch` が壊れている環境でも CLI と `core` は動く（障害の影響範囲をノードに閉じる）
 """
 
 from __future__ import annotations
 
-import logging
-
-_LOGGER = logging.getLogger(__name__)
-
-_NODE_IMPORT_ERROR: ModuleNotFoundError | None = None
-
-try:  # pragma: no cover - ComfyUI 実行時のみ通る
-    from .nodes import (
-        NODE_CLASS_MAPPINGS,
-        NODE_DISPLAY_NAME_MAPPINGS,
-        WEB_DIRECTORY,
-    )
-except ModuleNotFoundError as exc:  # pragma: no cover - ComfyUI 外
-    if exc.name not in {"torch", "folder_paths"}:
-        raise
-    _NODE_IMPORT_ERROR = exc
-    _LOGGER.warning(
-        "maskveil: ComfyUI ノードを公開しません（%s が見つかりません）。"
-        "CLI（tools/）と core/ は利用できます。",
-        exc.name,
-    )
-    NODE_CLASS_MAPPINGS: dict[str, type] = {}
-    NODE_DISPLAY_NAME_MAPPINGS: dict[str, str] = {}
-    WEB_DIRECTORY = "./web"
+import importlib
+from typing import Any
 
 __all__ = [
     "NODE_CLASS_MAPPINGS",
     "NODE_DISPLAY_NAME_MAPPINGS",
     "WEB_DIRECTORY",
 ]
+
+_LAZY_ATTRIBUTES = frozenset(__all__)
+
+
+def __getattr__(name: str) -> Any:
+    """ComfyUI が参照したときだけ `nodes` を読み込んで値を返す。"""
+    if name not in _LAZY_ATTRIBUTES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    nodes = importlib.import_module(f"{__name__}.nodes")
+    value = getattr(nodes, name)
+    globals()[name] = value  # 2回目以降は通常の属性として解決する
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | _LAZY_ATTRIBUTES)

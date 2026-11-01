@@ -1,0 +1,11 @@
+# ComfyUI（`custom_nodes/` へ clone、または ComfyUI Manager の Git URL インストール）で必要な実行時依存。
+#
+# - ComfyUI 本体の依存に `onnxruntime` は含まれないため、このファイルが無いと
+#   ノードの import 時に ModuleNotFoundError となり、パッケージ全体が読み込まれない。
+# - `pip install maskveil`（PyPI / Comfy Registry 経由）では `pyproject.toml` の
+#   `[project].dependencies` が使われるため、このファイルは不要。
+# - `torch` は ComfyUI が提供する。ここに足してはいけない。
+
+numpy>=1.24
+onnxruntime>=1.16
+pillow>=10

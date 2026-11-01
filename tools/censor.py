@@ -56,7 +56,7 @@ TOOL_VERSION = "0.1.0"
 """レポートの生成元を特定するための CLI 版（`pyproject.toml` と一致させる）。"""
 
 DEFAULT_CLASSES = ",".join(SEXUAL_EXPOSED_LABELS)
-"""既定の対象クラス。既定ワークフロー（`workflows/censor-nsfw.json`）と同じ2クラス。"""
+"""既定の対象クラス（性器の露出2クラス）。CLI で何も指定しない場合に使う。"""
 
 CENSOR_MODE = "mosaic"
 """CLI が使う加工方法。`blur` / `black` は ComfyUI ノード側の機能（CLI では公開しない）。"""
@@ -111,7 +111,7 @@ class CensorSettings:
 def build_parser() -> argparse.ArgumentParser:
     """コマンドライン引数を定義する。"""
     parser = argparse.ArgumentParser(
-        prog="python -m maskveil.tools.censor",
+        prog="maskveil",
         description="画像またはディレクトリをモザイク処理し、PNG で保存する。",
     )
     parser.add_argument("input", metavar="INPUT", help="入力画像、または入力ディレクトリ")
@@ -509,7 +509,7 @@ def _build_report(
     rows: list[dict[str, Any]],
     folders: list[str],
 ) -> dict[str, Any]:
-    """レポート JSON（契約 §5.3）を組み立てる。"""
+    """レポート JSON を組み立てる。"""
     counts = _count_status(rows)
     return {
         "schema_version": SCHEMA_VERSION,

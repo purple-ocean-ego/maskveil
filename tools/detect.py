@@ -31,7 +31,7 @@ SCHEMA_VERSION = 1
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m maskveil.tools.detect",
+        prog="maskveil-detect",
         description="hotscreen 検出モデルで1枚推論し、原画像座標のbboxをJSONで出力する。",
     )
     parser.add_argument("image", nargs="?", help="入力画像のパス")
