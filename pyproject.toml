@@ -1,14 +1,79 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "hotscreen-censor"
+name = "maskveil"
 version = "0.1.0"
-description = "NSFW region detection (hotscreen YOLO11) and shape-following mask refinement (YOLO11-Seg) for ComfyUI"
+description = "Shape-following region censor: ONNX detection, contour masks, and mosaic/blur/black modes. ComfyUI nodes and CLI. Works with any model that follows the hotscreen 16-class contract."
+readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
+authors = [{ name = "purple-ocean-ego" }]
+keywords = [
+  "censor",
+  "mosaic",
+  "pixelate",
+  "nsfw",
+  "mask",
+  "segmentation",
+  "onnx",
+  "comfyui",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: End Users/Desktop",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Multimedia :: Graphics",
+]
 dependencies = [
   "numpy>=1.24",
   "onnxruntime>=1.16",
   "pillow>=10",
 ]
+
+[project.urls]
+Homepage = "https://github.com/purple-ocean-ego/maskveil"
+Repository = "https://github.com/purple-ocean-ego/maskveil"
+"Bug Tracker" = "https://github.com/purple-ocean-ego/maskveil/issues"
+Documentation = "https://github.com/purple-ocean-ego/maskveil#readme"
+
+[project.scripts]
+maskveil = "maskveil.tools.censor:main"
+maskveil-detect = "maskveil.tools.detect:main"
+maskveil-refine = "maskveil.tools.refine:main"
+
+[project.optional-dependencies]
+# `cli` は追加依存なしの明示（CLI は base 依存だけで動く）
+cli = []
+# `nodes` は追加依存なしの明示（torch は ComfyUI が提供する。足すとインストールが壊れる）
+nodes = []
+# 開発・CI 用
+dev = ["pytest>=9", "ruff>=0.6"]
+
+[tool.comfy]
+PublisherId = "purple-ocean-ego"
+DisplayName = "MaskVeil — Shape-Following Censor"
+Icon = "https://raw.githubusercontent.com/purple-ocean-ego/maskveil/main/assets/icon.png"
+
+[tool.setuptools]
+# リポジトリ直下をそのままパッケージとして公開する（`maskveil/` サブディレクトリを作らない）
+packages = ["maskveil", "maskveil.core", "maskveil.nodes", "maskveil.tools", "maskveil.web"]
+
+[tool.setuptools.package-dir]
+"maskveil" = "."
+"maskveil.core" = "core"
+"maskveil.nodes" = "nodes"
+"maskveil.tools" = "tools"
+"maskveil.web" = "web"
+
+[tool.setuptools.package-data]
+maskveil = ["web/*.js"]
+"maskveil.web" = ["*.js"]
 
 [tool.ruff]
 line-length = 100
@@ -24,4 +89,4 @@ known-first-party = ["maskveil"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q -ra"
