@@ -1,0 +1,39 @@
+# ComfyUI へ配布しないファイル（Comfy Registry / ComfyUI Manager 用）
+#
+# このファイルに書いたものは ComfyUI にインストールされない。
+# `pip install maskveil` の wheel とは別の制御であり、wheel は MANIFEST / package-data に従う。
+#
+# 残すもの（除外してはいけない）:
+#   __init__.py  core/  nodes/  tools/  web/  README.md  LICENSE  pyproject.toml
+
+# テスト（CI 専用。実行時に不要）
+tests/
+
+# リポジトリ運用（GitHub 専用）
+.github/
+.gitignore
+MANIFEST.in
+
+# セッション状態・調査メモ（本プロジェクトの作業規約）
+.session/
+.local/
+
+# ドキュメント用の画像（Icon は raw.githubusercontent から取得される）
+assets/
+
+# ビルド成果物・キャッシュ
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# モデルは非同梱（利用者が絶対パスで指定する）
+*.onnx
+*.ONNX
+
+# このファイル自体
+.comfyignore

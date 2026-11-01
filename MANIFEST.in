@@ -1,0 +1,17 @@
+# sdist に含めないもの
+#
+# wheel は `[tool.setuptools] packages` と `package-data` で制御しているため、
+# ここでの指定は **sdist（.tar.gz）** に効く。
+
+# テスト・運用資材・アイコン画像（配布物には不要）
+prune tests
+prune assets
+prune .github
+
+# モデルは非同梱（MIT の前提）
+global-exclude *.onnx
+global-exclude *.ONNX
+
+# 生成物
+global-exclude *.py[cod]
+global-exclude __pycache__
