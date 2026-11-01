@@ -1,4 +1,4 @@
-"""`HotscreenRefiner` ノード（SPEC §4-3）。
+"""`HotscreenRefiner` ノード。
 
 `HOTSCREEN` を受け取り、`DET_TO_SEG` に対応のある検出だけを輪郭形状へ置換する。
 **`IMAGE` 入力を持たない**（`HOTSCREEN.image` を常に基準にするため）。
@@ -40,7 +40,7 @@ class HotscreenRefiner:
 
     @classmethod
     def INPUT_TYPES(cls) -> dict[str, dict[str, tuple]]:
-        """ComfyUI の入力定義（SPEC §4-3 の `spec-io` を写経）。"""
+        """ComfyUI の入力定義。"""
         return {
             "required": {
                 "hotscreen": ("HOTSCREEN",),
@@ -103,8 +103,8 @@ class HotscreenRefiner:
             for item in envelope["detections"]
         ]
 
-        # 範囲外の batch_index を黙って捨てると「モザイクされない検出」が生まれる
-        # （SPEC §3-3 は不一致を明示エラーとする）
+        # 範囲外の batch_index を黙って捨てると「隠蔽されない検出」が生まれるため、
+        # 1件でもあれば明示的にエラーにする。
         out_of_range = sorted(
             {batch_index for batch_index, _, _ in entries if not 0 <= batch_index < batch_size}
         )

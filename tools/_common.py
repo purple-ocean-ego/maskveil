@@ -25,8 +25,8 @@ def quantize_rgb(image: np.ndarray) -> np.ndarray:
     """`float32 0–1` の画像を `uint8` へ量子化する。
 
     ComfyUI の `SaveImage`（`np.clip(i, 0, 255).astype(np.uint8)`）と同じ**切り捨て**に揃える。
-    これにより、同じ float32 結果から作った PNG が ComfyUI 経路と**画素完全一致**する
-    （WP #101 の等価性検証を厳密一致で行える）。
+    これにより、同じ float32 結果から作った PNG が ComfyUI の保存経路と**画素完全一致**する
+    （CLI と ComfyUI の等価性を厳密一致で検証できる）。
 
     なお検出0件の無加工コピーは `uint8` のまま `save_png` へ渡すため、この関数を通らない
     （入力と画素完全一致を保つ）。
