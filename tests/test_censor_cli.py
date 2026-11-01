@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -391,7 +392,7 @@ def test_existing_output_in_directory_continues_other_images(tmp_path, monkeypat
 def test_default_output_dir_for_directory_is_sibling(tmp_path, monkeypatch, capsys) -> None:
     """
     ユースケース: `--output-dir` を省略してディレクトリを処理する
-    検証意図: 既定は `<入力名>_censored/` に作られる（AC2・契約 §5.2）
+    検証意図: 既定は `<入力名>_censored/` に作られる（AC2）
     """
     image_dir = tmp_path / "in"
     image_dir.mkdir()
@@ -413,7 +414,7 @@ def test_default_output_dir_for_directory_is_sibling(tmp_path, monkeypatch, caps
 def test_default_output_dir_for_file_is_parent(tmp_path, monkeypatch, capsys) -> None:
     """
     ユースケース: `--output-dir` を省略して画像1枚を処理する
-    検証意図: 既定は入力の親ディレクトリ（AC2・契約 §5.2）
+    検証意図: 既定は入力の親ディレクトリ（AC2）
     """
     image_path, _, det_model, _ = _prepare(tmp_path)
     _detector_off(monkeypatch)
@@ -695,7 +696,7 @@ def test_required_arguments_exit_with_2(argv: list[str]) -> None:
 def test_report_schema_keys(tmp_path, monkeypatch, capsys) -> None:
     """
     ユースケース: レポート JSON を後段のツール（比較・zip 化）が読む
-    検証意図: 契約 §5.3 の必須キーが揃い、型と意味が一致する（AC5）
+    検証意図: レポートの必須キーが揃い、型と意味が一致する（AC5）
     """
     image_path, _, det_model, _ = _prepare(tmp_path)
     detection = Detection(11, "MALE_GENITALIA_EXPOSED", 0.9, BBOX)
@@ -1164,9 +1165,7 @@ def test_censor_does_not_import_nodes() -> None:
                 offenders.append(node.module)
         elif isinstance(node, ast.Import):
             offenders.extend(
-                alias.name
-                for alias in node.names
-                if alias.name.startswith("maskveil.nodes")
+                alias.name for alias in node.names if alias.name.startswith("maskveil.nodes")
             )
     assert offenders == []
 
@@ -1233,7 +1232,7 @@ def test_output_is_always_png_for_jpeg_input(tmp_path, monkeypatch, capsys) -> N
 def test_extension_matching_is_case_insensitive(tmp_path, monkeypatch, capsys, name: str) -> None:
     """
     ユースケース: 大文字拡張子や webp を入力する
-    検証意図: 拡張子の大小を無視し、webp も PNG へ変換して処理する（契約 §5.1）
+    検証意図: 拡張子の大小を無視し、webp も PNG へ変換して処理する（CLI 仕様）
     """
     image = _synthetic_image(tmp_path / "src.png", width=16, height=16)
     source_path = tmp_path / name
@@ -1413,7 +1412,7 @@ def test_dot_input_uses_sibling_output(tmp_path, monkeypatch, capsys) -> None:
 def test_help_lists_contract_options(capsys) -> None:
     """
     ユースケース: `-h` でオプションを確認する
-    検証意図: 契約 §5.1 の主要オプションがヘルプに現れる（終了コード 0）
+    検証意図: 主要オプションがヘルプに現れる（終了コード 0）
     """
     with pytest.raises(SystemExit) as excinfo:
         _run(["--help"])
@@ -1490,7 +1489,7 @@ def test_folders_breakdown_counts_mixed_status(tmp_path, monkeypatch, capsys) ->
 def test_progress_is_reported_on_stderr(tmp_path, monkeypatch, capsys) -> None:
     """
     ユースケース: 大量バッチの進捗を確認する
-    検証意図: stdin/stdout の JSON を汚さず、stderr に進捗行を出す（契約 §5.1）
+    検証意図: stdin/stdout の JSON を汚さず、stderr に進捗行を出す（CLI 仕様）
     """
     image_path, _, det_model, _ = _prepare(tmp_path)
     _detector_off(monkeypatch)
@@ -1557,19 +1556,33 @@ def test_tool_version_matches_pyproject() -> None:
     assert version == censor_module.TOOL_VERSION
 
 
+def _workflows_dir() -> pathlib.Path | None:
+    """既定ワークフローの置場を解決する（無ければ None）。
+
+    `MASKVEIL_WORKFLOWS_DIR` を最優先する（位置を推測しない）。
+    未指定の場合は、パッケージ直下 → 1つ上（vendoring された場合のリポジトリ直下）を探す。
+    """
+    override = os.environ.get("MASKVEIL_WORKFLOWS_DIR")
+    if override:
+        path = pathlib.Path(override)
+        return path if path.is_dir() else None
+    candidates = [PACKAGE / "workflows"]
+    if len(PACKAGE.parents) > 1:
+        candidates.append(PACKAGE.parents[1] / "workflows")
+    return next((path for path in candidates if path.is_dir()), None)
+
+
 def test_workflows_use_core_defaults() -> None:
     """
     ユースケース: 既定WFと core 定数がずれていないことを保証する
-    検証意図: 同梱WFの `block_size` / `mask_expand` が core 定数と一致する（AC10・AC11）
+    検証意図: 同梱WFの `block_size` / `mask_expand` が core 定数と一致する
     """
-    # 公開パッケージ単体のリポジトリは workflows/ を持たない。
-    # comfyui-local-ops へ vendoring された場合のみ、その workflows/ を検証する。
-    candidates = [PACKAGE / "workflows"]
-    if len(PACKAGE.parents) > 2:
-        candidates.append(PACKAGE.parents[2] / "workflows")
-    workflows = next((path for path in candidates if path.is_dir()), None)
+    workflows = _workflows_dir()
     if workflows is None:
-        pytest.skip("workflows/ を持たないリポジトリ（公開パッケージ単体）では検証しない")
+        pytest.skip(
+            "workflows/ を持たないリポジトリ（公開パッケージ単体）では検証しない。"
+            " 検証する場合は MASKVEIL_WORKFLOWS_DIR で場所を指定する"
+        )
 
     for name in ("censor-nsfw.json", "censor-nsfw-refiner.json"):
         payload = json.loads((workflows / name).read_text(encoding="utf-8"))

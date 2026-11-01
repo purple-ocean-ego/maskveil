@@ -59,7 +59,18 @@ def test_package_loads_with_comfyui_loader(tmp_path) -> None:
     shutil.copytree(
         PACKAGE,
         target,
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".pytest_cache"),
+        ignore=shutil.ignore_patterns(
+            "__pycache__",
+            "*.pyc",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".git",
+            ".venv",
+            "venv",
+            "dist",
+            "build",
+            "*.egg-info",
+        ),
     )
 
     completed = subprocess.run(

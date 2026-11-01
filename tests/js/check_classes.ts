@@ -4,9 +4,9 @@
 // 実行時にだけ `scripts/app.js` のスタブを持つ一時ディレクトリへ複製して読み込む。
 //
 // 実行（deno が必要。pytest の対象外）:
-//   deno run -A custom_nodes_src/maskveil/tests/js/check_classes.ts
+//   deno run -A tests/js/check_classes.ts
 //
-// 検証内容は SPEC §7-3 / §7-5（STRING の解釈・生成）と、旧ハーネス（使い捨て）の
+// 検証内容は STRING の解釈・生成と、旧ハーネス（使い捨て）の
 // golden ケースを引き継いだもの。
 
 const here = new URL(".", import.meta.url);

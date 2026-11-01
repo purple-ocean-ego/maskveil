@@ -261,7 +261,7 @@ def test_mask_applies_per_batch() -> None:
 
 
 def test_zero_mask_keeps_previous_mosaic_image() -> None:
-    """2段目に検出0件の画像が来ても、1段目のモザイクが消えないこと（SPEC §4-4）。"""
+    """2段目に検出0件の画像が来ても、1段目のモザイクが消えないこと。"""
     previous = _image_value(16, 16, 0.25)
     envelope = _envelope(mosaic_image=previous)
     before_processing = list(envelope["meta"]["processing"])
@@ -276,7 +276,7 @@ def test_zero_mask_keeps_previous_mosaic_image() -> None:
 
 
 def test_explicit_mask_wins_over_hotscreen_mask() -> None:
-    """明示 `mask` が `hotscreen.mask` より優先されること（§4-4 の解決順）。"""
+    """明示 `mask` が `hotscreen.mask` より優先されること（解決順）。"""
     envelope = _envelope()  # hotscreen.mask は 4:8, 4:8 を覆う
     explicit = torch.zeros((1, 16, 16), dtype=torch.float32)
     explicit[0, 10:14, 10:14] = 1.0
@@ -291,7 +291,7 @@ def test_explicit_mask_wins_over_hotscreen_mask() -> None:
 
 
 def test_soft_mask_below_half_is_applied() -> None:
-    """0 < v <= 0.5 のソフトマスクも適用対象（SPEC §6-6 の `mask > 0.0`）。"""
+    """0 < v <= 0.5 のソフトマスクも適用対象。"""
     image = _image()
     soft = torch.zeros((1, 16, 16), dtype=torch.float32)
     soft[0, 2:6, 2:6] = 0.3
