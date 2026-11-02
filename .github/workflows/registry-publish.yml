@@ -1,0 +1,54 @@
+name: Publish to Comfy Registry
+
+# 目的:
+#   `pyproject.toml` の version を上げて main へ入れると、Comfy Registry へ自動公開する。
+#   手動実行（workflow_dispatch）も用意し、初回公開や再試行に使う。
+#
+# 前提:
+#   - リポジトリ Secret `REGISTRY_ACCESS_TOKEN`（Comfy Registry の publisher API キー）
+#   - 公開済みバージョンは**削除できない**（非推奨化のみ）ため、version の更新は計画的に行う
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - pyproject.toml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: registry-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish to registry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Check secret
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        run: |
+          if [ -z "${REGISTRY_ACCESS_TOKEN}" ]; then
+            echo "::error::REGISTRY_ACCESS_TOKEN が未設定です（Settings > Secrets and variables > Actions）"
+            exit 1
+          fi
+
+      - name: Validate package metadata
+        run: uvx --from comfy-cli comfy node validate
+
+      - name: Publish
+        env:
+          REGISTRY_ACCESS_TOKEN: ${{ secrets.REGISTRY_ACCESS_TOKEN }}
+        run: |
+          version=$(python3 -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "publishing version: ${version}"
+          uvx --from comfy-cli comfy node publish --token "${REGISTRY_ACCESS_TOKEN}"
