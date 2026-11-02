@@ -93,11 +93,6 @@ ignore = ["E501"]
 [tool.ruff.lint.isort]
 known-first-party = ["maskveil"]
 
-[tool.ruff.lint.per-file-ignores]
-# torch 非依存レグで `pytest.importorskip("torch")` を先に評価するため、
-# その直後の import は E402（import が先頭にない）になる
-"tests/test_nodes_*.py" = ["E402"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q -ra"
