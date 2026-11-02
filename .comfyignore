@@ -32,6 +32,10 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 
 # モデルは非同梱（利用者が絶対パスで指定する）
 *.onnx
