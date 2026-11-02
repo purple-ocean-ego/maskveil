@@ -51,15 +51,19 @@ jobs:
           - python: "3.10"
             torch: none
             torch_spec: ""
+            min_collected: 339
           - python: "3.10"
             torch: cpu
             torch_spec: "2.14.1+cpu"   # 2.15 系は cp310 wheel を提供しない
+            min_collected: 431
           - python: "3.12"
             torch: none
             torch_spec: ""
+            min_collected: 339
           - python: "3.12"
             torch: cpu
             torch_spec: "2.15.0+cpu"
+            min_collected: 431
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -70,22 +74,26 @@ jobs:
         run: uv sync --extra dev --locked
       - name: Install CPU torch
         if: matrix.torch == 'cpu'
+        # pytorch の CPU index だけで torch とその依存が解決できる（PyPI を混ぜない）
         run: >
           uv pip install
           --index-url https://download.pytorch.org/whl/cpu
-          --extra-index-url https://pypi.org/simple
-          --index-strategy unsafe-best-match
           "torch==${{ matrix.torch_spec }}"
-      - name: Assert torch tests are collected
-        if: matrix.torch == 'cpu'
+      - name: Check collected tests
+        # torch の有無にかかわらず、収集件数が下限を下回ったら失敗させる
         run: |
-          # `pytest.importorskip("torch")` でノード契約テストが黙って落ちないよう、
-          # 収集件数が下限を超えていることを機械的に確認する
           collected=$(uv run --no-sync pytest --collect-only 2>&1 \
-            | grep -oE '^[0-9]+ tests collected' | grep -oE '^[0-9]+')
-          echo "collected=${collected}"
+            | grep -oE '^[0-9]+ tests collected' | grep -oE '^[0-9]+' || true)
+          echo "collected=${collected:-<none>} (min=${{ matrix.min_collected }})"
           test -n "${collected}"
-          test "${collected}" -ge 431
+          test "${collected}" -ge ${{ matrix.min_collected }}
+      - name: Assert node contract tests are collected
+        if: matrix.torch == 'cpu'
+        # `importorskip("torch")` の位置がずれるとノード契約テストが黙って消えるため、
+        # 代表モジュールが収集されていることを直接確認する
+        run: |
+          uv run --no-sync pytest --collect-only 2>&1 | grep -q 'test_nodes_registry.py::' \
+            || { echo "::error::ノード契約テストが収集されていません（importorskip の位置を確認）"; exit 1; }
       - name: pytest
         run: uv run --no-sync pytest
 
@@ -100,11 +108,11 @@ jobs:
           enable-cache: true
       - name: Build sdist and wheel
         run: uv build
-      - name: Inspect wheel contents
+      - name: Inspect artifacts
         run: |
           python3 - <<'PY'
           import glob
-          import sys
+          import tarfile
           import zipfile
 
           wheels = glob.glob("dist/*.whl")
@@ -123,11 +131,23 @@ jobs:
           missing = [name for name in required if name not in names]
           assert not missing, f"wheel に欠けているファイル: {missing}"
 
-          # 開発・テスト資材が混入していないこと
-          leaked = [n for n in names if n.startswith(("tests/", "tools/")) or ".onnx" in n]
+          # package-dir で `maskveil` の下へ寄せているため、パスは必ず `maskveil/` で始まる
+          leaked = [n for n in names if n.startswith("tests/") or n.endswith(".onnx")]
           assert not leaked, f"wheel に配布対象外が混入: {leaked}"
           print(f"wheel OK: {wheels[0]} ({len(names)} entries)")
+
+          with tarfile.open(sdists[0]) as archive:
+              sdist_names = archive.getnames()
+          prefix = sdist_names[0].split("/")[0] + "/"
+          required_sdist = ["LICENSE", "README.md", "pyproject.toml", "web/hotscreen_classes.js"]
+          missing_sdist = [p for p in required_sdist if prefix + p not in sdist_names]
+          assert not missing_sdist, f"sdist に欠けているファイル: {missing_sdist}"
+          leaked_sdist = [n for n in sdist_names if "/tests/" in n or n.endswith(".onnx")]
+          assert not leaked_sdist, f"sdist に配布対象外が混入: {leaked_sdist}"
+          print(f"sdist OK: {sdists[0]} ({len(sdist_names)} entries)")
           PY
+      - name: Check metadata
+        run: uvx twine check dist/*
       - name: CLI smoke (no torch)
         run: |
           uv venv /tmp/smoke
