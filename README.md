@@ -34,10 +34,262 @@ censor : 画像/ディレクトリ + 検出モデル（+任意で輪郭）
 **モデルは本パッケージに含まれません。** 利用者が取得し、**絶対パス**で指定します。
 環境変数・既定値・ディレクトリ探索は行いません（ComfyUI ノードのみ `folder_paths` で解決します）。
 
-| 用途 | 必要なもの | 例 | SHA-256（開発で使用したビルド） |
+### 入手元とライセンス
+
+下記は**入手元・ライセンス・参照リビジョン**の一覧です。取得手順は「モデルの入手」にあります。
+
+| 用途 | モデル（ONNX） | 入手元（Hugging Face） | ライセンス |
 | --- | --- | --- | --- |
-| 検出 | YOLO11 検出 ONNX（16クラス） | `hs-real-anime-y11n-640-fp32.onnx` | `fecf08b62cf091df6b46222e163ac1721570d5f0a9cffa93591e5bb46f61bccf` |
-| 輪郭（任意） | YOLO11-Seg ONNX（7クラス） | `nsfw-anime-xl-x1280.onnx` | `7d193296684e13d9998f50bdf4bb4696ff826785b6d22f5260313e353e5cae1f` |
+| 検出 | `hs-real-anime-y11n-640-fp32.onnx`（YOLO11・16クラス・入力640） | [`Perfectfox256/hotscreen-detection-models`](https://huggingface.co/Perfectfox256/hotscreen-detection-models) の `yolo-07-2025/hs-real-anime-y11n-640-fp32.onnx` | **AGPL-3.0** |
+| 輪郭（任意） | `nsfw-anime-xl-x1280.onnx`（YOLO26-Seg・7クラス・入力1280） | [`01miku/anime-nsfw-segm-yolo26`](https://huggingface.co/01miku/anime-nsfw-segm-yolo26) | **MIT** |
+
+> **検出モデルのライセンスは系列で分かれています。** 同じリポジトリでも `yolo-07-2025/` は **AGPL-3.0**、`yolox-07-2025/` は **MIT** です。
+> 本パッケージが前提とするのは `yolo-07-2025/`（AGPL-3.0）です。`yolox-07-2025/` は別系列のため、本 README の手順では扱いません。
+
+- 参照リビジョン（HF revision・取得時点）: 検出 `8134f9ea866820684cdb9f022a5ce3d306bed0a2` / 輪郭 `1697d5d1827b6a818b350b44bf3ec27f08837a2a`
+  モデルは更新されうるため、再現性が必要な場合はこの revision を指定して取得します。
+
+### モデルの入手
+
+検出モデルは配布済み ONNX を取得します。輪郭モデルは **ONNX を取得する（経路A）** か、
+**`.pt` から ONNX へ変換する（経路B）** のどちらかです。
+
+#### 検出モデル（ONNX を取得）
+
+```bash
+DET_DIR=~/comfyui-local/models/hotscreen/det
+mkdir -p "$DET_DIR"
+
+curl -L -o "$DET_DIR/hs-real-anime-y11n-640-fp32.onnx" \
+  "https://huggingface.co/Perfectfox256/hotscreen-detection-models/resolve/8134f9ea866820684cdb9f022a5ce3d306bed0a2/yolo-07-2025/hs-real-anime-y11n-640-fp32.onnx"
+
+# クラス名の並び（16行）も同じ revision から取得しておく
+curl -L -o "$DET_DIR/labels.txt" \
+  "https://huggingface.co/Perfectfox256/hotscreen-detection-models/resolve/8134f9ea866820684cdb9f022a5ce3d306bed0a2/yolo-07-2025/labels.txt"
+```
+
+`hf` CLI（`pip install -U huggingface_hub`）でも同じことができます。
+`--local-dir` は**リポジトリ内のパスを保持する**ため、`yolo-07-2025/` を平坦化します。
+
+```bash
+DET_DIR=~/comfyui-local/models/hotscreen/det
+
+hf download Perfectfox256/hotscreen-detection-models \
+  yolo-07-2025/hs-real-anime-y11n-640-fp32.onnx yolo-07-2025/labels.txt \
+  --revision 8134f9ea866820684cdb9f022a5ce3d306bed0a2 \
+  --local-dir "$DET_DIR"
+
+# --local-dir/yolo-07-2025/... に落ちるので、配置先の例に合わせて平坦化する
+mv "$DET_DIR"/yolo-07-2025/* "$DET_DIR"/ && rmdir "$DET_DIR/yolo-07-2025"
+```
+
+#### 輪郭モデル: 経路A（ONNX をダウンロード）
+
+```bash
+SEG_DIR=~/comfyui-local/models/hotscreen/seg
+mkdir -p "$SEG_DIR"
+
+curl -L -o "$SEG_DIR/nsfw-anime-xl-x1280.onnx" \
+  "https://huggingface.co/01miku/anime-nsfw-segm-yolo26/resolve/1697d5d1827b6a818b350b44bf3ec27f08837a2a/nsfw-anime-xl-x1280.onnx"
+```
+
+> **配布元の ONNX は動的入力です。** このファイルは `dynamic=True` / `half=True`（ultralytics 8.4.52）で
+> 書き出されており、入力形状が `[batch, 3, height, width]` です。
+> **`maskveil-refine` は `--refiner-input-size 1280` を明示しないと「動的入力サイズ」のエラーで停止します。**
+> 統合 CLI `maskveil`（`censor`）はこのフラグを持たないため、**経路A のモデルでは `--refine` を使えません**。
+> ComfyUI ノードは既定で 1280 を渡すため、そのまま動作します。
+> 静的・fp32 のモデルが必要な場合（統合 CLI で `--refine` したい場合）は、経路B で `.pt` から再変換してください。
+
+#### 輪郭モデル: 経路B（`.pt` から ONNX へ変換）
+
+**変換は利用者環境で行う行為です。** 本パッケージは変換スクリプトを同梱せず、
+`ultralytics`（AGPL-3.0）を依存にも含みません（`tests/test_license.py` が機械検証）。
+
+```bash
+# 変換する環境にだけ入れる（本パッケージの依存には足さない）
+python -m pip install ultralytics
+```
+
+`.pt` は ONNX と同じリポジトリから取得できます（約 141MB）。
+
+```bash
+SEG_DIR=~/comfyui-local/models/hotscreen/seg
+
+curl -L -o "$SEG_DIR/nsfw-anime-xl-x1280.pt" \
+  "https://huggingface.co/01miku/anime-nsfw-segm-yolo26/resolve/1697d5d1827b6a818b350b44bf3ec27f08837a2a/nsfw-anime-xl-x1280.pt"
+```
+
+```python
+from ultralytics import YOLO
+
+model = YOLO("nsfw-anime-xl-x1280.pt")  # 上で取得した .pt
+model.export(
+    format="onnx",
+    imgsz=1280,
+    opset=17,
+    simplify=True,
+    dynamic=False,
+    half=False,  # fp32 のまま
+)
+# → 同じディレクトリに nsfw-anime-xl-x1280.onnx ができる
+```
+
+本リポジトリで動作確認した書き出し条件（生成物の ONNX メタデータ）:
+
+| 項目 | 値 |
+| --- | --- |
+| モデル | `YOLO26x-seg`（`task=segment` / `head=Segment26`） |
+| ultralytics | `8.4.189` |
+| 入力 | `images` = `[1, 3, 1280, 1280]` float32 |
+| 出力 | `output0` = `[1, 43, 33600]`（`4 + 7クラス + 32`）/ `output1` = `[1, 32, 320, 320]` |
+| opset / simplify / dynamic | `17` / `True` / `False` |
+
+> **合否は形状で判定します。** 書き出し条件が違うと `output0` のクラス次元（43）や
+> `output1` のプロトタイプ数（32）が変わります。`core/onnx_utils.py` が検証するのは
+> 入力サイズだけなので、**変換後は「機能検証」の出力形状チェックまで実施してください**。
+
+#### AI への指示テンプレート
+
+`.pt` の変換を AI に任せる場合は、次のテンプレートの `<...>` を差し替えて渡します。
+
+```text
+次の .pt を ONNX に変換してください。
+
+- 入力（.pt）: <例: ~/Downloads/nsfw-anime-xl-x1280.pt>
+- 出力先: <例: ~/comfyui-local/models/hotscreen/seg/nsfw-anime-xl-x1280.onnx>
+- 入力サイズ: 1280（正方形・静的）
+- クラス数: 7（anus / nipple / penis / vagina / female face / male face / pubic hair）
+- 出力ファイル名: nsfw-anime-xl-x1280.onnx
+- 書き出し条件: opset=17 / simplify=True / dynamic=False / fp32
+
+受け入れ条件:
+1. onnxruntime で読み込めること
+2. 入力が images=[1,3,1280,1280] float32
+3. output0 が [1, 4+7+32, N]、output1 が [1, 32, 320, 320]
+4. 元の .pt は変更しない。本パッケージのリポジトリへモデルをコミットしない
+```
+
+> `ultralytics` は **AGPL-3.0** です。変換は利用者環境の行為であり、本パッケージは
+> 変換スクリプトも `ultralytics` も同梱・import しません。
+
+### 配置先の例
+
+| 用途 | 配置先の例 |
+| --- | --- |
+| 検出 | `~/comfyui-local/models/hotscreen/det/hs-real-anime-y11n-640-fp32.onnx` |
+| 輪郭（任意） | `~/comfyui-local/models/hotscreen/seg/nsfw-anime-xl-x1280.onnx` |
+
+`hotscreen` カテゴリ配下に置くと、ComfyUI ノードは `folder_paths` で解決できます（CLI は常に絶対パス指定）。
+
+### モデルの同一性をどう確認するか
+
+ONNX のバイト列は**変換環境で変わります**（ultralytics のバージョン、opset、fp16/fp32、simplify の有無など）。
+同じモデルでも、配布元が公開している ONNX と、手元で `.pt` から変換した ONNX は**ハッシュ値が一致しません**。
+固定値を載せても同一性の保証にならないため、本 README ではハッシュ値を記載しません。
+
+代わりに、**形状とクラス契約**で「使えるモデルか」を判定します。手順は「機能検証」を参照してください。
+
+> CLI / ノードの JSON 出力には実行時の `sha256` が含まれます。これは「その実行で読んだファイルは何か」を
+> 記録するためのもので、配布物の同一性を保証する値ではありません。
+
+### 機能検証（入手・変換したモデルが使えるか）
+
+**形状とクラス契約**で判定します。上から順に、**同じシェル**で実行してください。
+
+前提: `maskveil-detect` / `maskveil-refine` が使える環境（`pipx install maskveil` または `pip install -e .`）と、
+その Python で `onnxruntime` を import できること。
+
+```bash
+DET=~/comfyui-local/models/hotscreen/det/hs-real-anime-y11n-640-fp32.onnx
+SEG=~/comfyui-local/models/hotscreen/seg/nsfw-anime-xl-x1280.onnx
+```
+
+#### 1. 入力サイズと出力形状
+
+```bash
+python - <<PY
+import onnxruntime as ort
+
+for p in ["$DET", "$SEG"]:
+    session = ort.InferenceSession(p, providers=["CPUExecutionProvider"])
+    print(p.rsplit("/", 1)[-1])
+    print("  input: ", session.get_inputs()[0].shape)
+    for out in session.get_outputs():
+        print("  output:", out.name, out.shape)
+PY
+```
+
+期待値:
+
+| モデル | 入力 | 出力 | 次元の意味 |
+| --- | --- | --- | --- |
+| 検出 | `[1, 3, 640, 640]` | `output0` = `[1, 20, 8400]` | `4 + 16クラス` |
+| 輪郭（経路B・静的） | `[1, 3, 1280, 1280]` | `output0` = `[1, 43, 33600]` / `output1` = `[1, 32, 320, 320]` | `4 + 7クラス + 32プロトタイプ` |
+| 輪郭（経路A・動的） | `['batch', 3, 'height', 'width']` | `output0` = `['batch', 43, 'anchors']` / `output1` = `['batch', 32, 'mask_height', 'mask_width']` | 2次元目が **43** / **32** なら可（N・H/W は動的） |
+
+> 経路A は記号次元を返すため、**数値の一致は要求しません**。合否は
+> `output0` の2次元目（検出 20 / 輪郭 43）と `output1` の2次元目（32）で判定します。
+
+#### 2. ラベル順の一致（16クラス）
+
+`--list-classes` は `0<TAB>FEMALE_FACE` の形式で出力するため、**2列目だけ**を比較します。
+配布元の `labels.txt` は **CRLF** なので `tr -d '\r'` で正規化します。
+
+```bash
+maskveil-detect --list-classes | cut -f2 > /tmp/cli_labels.txt
+tr -d '\r' < "$(dirname "$DET")/labels.txt" > /tmp/hf_labels.txt
+diff /tmp/cli_labels.txt /tmp/hf_labels.txt && echo "labels: OK"
+```
+
+`diff` が空なら、**クラス数16・名前・順序**が一致しています（`core/labels.py` の `LABELS` と配布元が同一）。
+
+#### 3. スモーク推論
+
+対象部位を含む画像を1枚使い、**1件以上の検出**が返ることを確認します。
+`detect` は検出0件でも終了コード 0 を返すため、**件数を `assert` で判定**します。
+
+```bash
+IMG=/path/to/image.png
+maskveil-detect "$IMG" --model "$DET" --classes all --conf 0.25 --output /tmp/det.json --pretty
+
+python - <<'PY'
+import json
+
+data = json.load(open("/tmp/det.json"))
+print("count:", data["count"])
+assert data["count"] >= 1, "検出が0件です（画像かモデルを確認してください）"
+print("smoke: OK")
+PY
+```
+
+#### 実行結果（2026-11-02・開発環境）
+
+| 検証 | 結果 |
+| --- | --- |
+| 1. 入力・出力形状 | 検出 `[1,3,640,640]` → `[1,20,8400]` / 輪郭（経路B）`[1,3,1280,1280]` → `[1,43,33600]`・`[1,32,320,320]` |
+| 2. ラベル順 | `diff` **空**（16行一致） |
+| 3. スモーク推論 | 3枚すべてで `assert` 通過（下表） |
+
+| 画像 | 検出件数 | 最高スコア |
+| --- | --- | --- |
+| `heroine1_00001_.png` | 3 | 0.912 |
+| `heroine1_00016_.png` | 7 | 0.861 |
+| `heroine1_00032_.png` | 5 | 0.889 |
+
+（3枚とも `FEMALE_FACE` を検出。`FEMALE_GENITALIA_EXPOSED` / `ANUS_EXPOSED` などの EXPOSED クラスを含む）
+
+#### 配布元 ONNX（126MB）の検証結果
+
+経路A のファイル（`nsfw-anime-xl-x1280.onnx` / 126,350,117 B）を実際に配置して確認しました（2026-11-02）。
+
+| 実行 | 結果 |
+| --- | --- |
+| CLI `refine`（入力サイズ未指定） | **エラー**: `refiner model has a dynamic input size; specify it explicitly` |
+| CLI `refine --refiner-input-size 1280` | 成功。検出7件のうち **3件**に `mask_source=model_seg`（FEMALE_FACE / ANUS_EXPOSED / FEMALE_GENITALIA_EXPOSED）。ローカル変換版と同じ3件 |
+| ComfyUI `censor-nsfw-refiner.json`（1枚） | **1枚入力 → 1枚出力**で完走。モザイク適用を画素差分で確認（最大差 209） |
+
+→ 動作しますが、**`maskveil-refine` では入力サイズの明示が必須**、**統合 CLI `maskveil`（`--refine`）では使えません**。
+統合 CLI で輪郭を使いたい場合は、経路B の静的モデルを用意してください。
 
 ### モデルの差し替え可能性
 
@@ -49,7 +301,7 @@ censor : 画像/ディレクトリ + 検出モデル（+任意で輪郭）
 | クラス数 16・クラス名と順序が一致 | `core/labels.py` の `LABELS` | `LABELS` の差し替え（データ修正） |
 | 静的・正方形入力 | `core/onnx_utils.py` | 入力サイズの明示指定、非正方形は非対応 |
 | NMS 非内蔵 | 自前の class-aware NMS | 二重適用に注意 |
-| 輪郭は YOLO11-Seg（プロトタイプ 32） | `core/refiner.py` | SAM 等はデコード実装の追加が必要 |
+| 輪郭は YOLO-Seg 系（プロトタイプ 32） | `core/refiner.py` | SAM 等はデコード実装の追加が必要 |
 
 ## インストール
 
@@ -163,6 +415,11 @@ maskveil /abs/input.png --det-model /abs/det.onnx --refine \
   --refiner-model /abs/seg/nsfw-anime-xl-x1280.onnx
 ```
 
+> **統合 CLI の `--refine` は動的入力の輪郭モデルに未対応です。** `maskveil` には `--refiner-input-size` が無いため、
+> 経路A の ONNX（動的入力）を渡すと `refiner model has a dynamic input size` で `exit 2` になります。
+> 経路A を使う場合は上の 1) → 2) の2コマンド（`maskveil-refine --refiner-input-size 1280`）に分けるか、
+> 経路B の静的モデルを使ってください。
+
 `python -m maskveil.tools.detect` / `.refine` / `.censor` でも同じことができます。
 
 ### `detect` の主なオプション
@@ -226,7 +483,7 @@ maskveil /abs/input.png --det-model /abs/det.onnx --refine \
 {
   "schema_version": 1,
   "image": {"path": "/abs/input.png", "width": 2560, "height": 3840},
-  "model": {"path": "/abs/det.onnx", "sha256": "fecf08b6...", "input_size": 640},
+  "model": {"path": "/abs/det.onnx", "sha256": "…", "input_size": 640},
   "params": {"conf": 0.2, "iou": 0.45, "classes": [11]},
   "detections": [
     {"class_id": 11, "class_name": "MALE_GENITALIA_EXPOSED", "score": 0.713,
@@ -291,8 +548,10 @@ maskveil /abs/input.png --det-model /abs/det.onnx --refine \
   切り取ると隠蔽漏れになる）。
 - 輪郭の bbox クロップはプロトタイプ格子（320）で量子化するため、seg 自身の bbox に対しても
   最大 1 格子（入力座標で約 4px）外へ張り出すことがある（安全側の誤差）。
-- `--input-size` / `--refiner-input-size` は省略時に ONNX の静的入力から取得する。指定値が
-  モデルと食い違う場合は、推論前に明確なエラーで停止する。
+- `--input-size` / `--refiner-input-size` は、**静的入力**のモデルでは省略時に ONNX から取得する。
+  動的入力のモデルでは**明示指定が必須**（省略するとエラー）。静的入力のモデルで指定値が
+  食い違う場合は、推論前に明確なエラーで停止する。
+- 統合 CLI `maskveil` は `--refiner-input-size` を持たないため、動的入力の輪郭モデルには未対応。
 - 座標復元は軸別倍率（`scale_x` / `scale_y`）で行い、letterbox の往復誤差を出さない。
 - NMS は **class-aware**（同一 bbox でもクラスが違えば残す）。隠蔽漏れを避けるため、
   モデル作者実装のクラス非依存 NMS とは意図的に異なる。
@@ -331,10 +590,13 @@ maskveil /abs/input.png --det-model /abs/det.onnx --refine \
 | 対象 | ライセンス | 配布 |
 | --- | --- | --- |
 | **本パッケージのコード**（`core` / `nodes` / `tools` / `web`） | **MIT** | する |
-| **対応モデル**（検出・輪郭の ONNX） | **AGPL-3.0**（モデル提供元の条件） | **しない**（利用者が取得し、絶対パスで指定） |
+| **検出モデル**（`hs-real-anime-y11n-640-fp32.onnx`） | **AGPL-3.0**（`yolo-07-2025/LICENSE`） | **しない**（利用者が取得し、絶対パスで指定） |
+| **輪郭モデル**（`nsfw-anime-xl-x1280.onnx`） | **MIT**（`01miku/anime-nsfw-segm-yolo26` のモデルカード） | **しない**（同上） |
 | `ultralytics`（学習・ONNX 書き出しに使われるライブラリ） | AGPL-3.0 | **しない**（import もしない） |
 
-本パッケージが MIT である根拠は、**モデルを同梱せず、AGPL ライブラリを import・同梱しない**ことです。
+本パッケージが MIT である根拠は、**モデルを同梱・再配布せず、AGPL ライブラリを import・同梱しない**ことです。
+モデルのライセンスは**モデルごとに異なり**（検出=AGPL-3.0 / 輪郭=MIT、詳細は[入手元とライセンス](#入手元とライセンス)）、
+いずれも再配布しないため本パッケージの MIT には影響しません。
 モデルを同梱した時点でこの前提は崩れるため、リポジトリにも配布物にも `*.onnx` を含めません
 （`tests/test_license.py` が機械検証）。
 
@@ -361,6 +623,7 @@ ruff format --check .
 
 ## 制約
 
-- 輪郭 ONNX は `ultralytics 8.4.189` で書き出した**静的入力（1280）**版です。動的入力版は未作成。
+- 動作確認している輪郭 ONNX は、`ultralytics 8.4.189` で `.pt` から書き出した**静的入力（1280）**版です（経路B）。
+  HF 配布元の ONNX（経路A）は**動的入力**のため、CLI では入力サイズの明示が必要で、統合 CLI の `--refine` は使えません。
 - 輪郭が対応しない部位（臀部・脇・腹・足・眼・COVERED 系）は bbox 形状しか持ちません。
 - ComfyUI ノードは GPU 推論を前提にしていません（onnxruntime の CPU 実行で動作します）。
