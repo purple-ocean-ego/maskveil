@@ -15,15 +15,19 @@ const source = await Deno.readTextFile(
 );
 
 const tmp = await Deno.makeTempDir({ prefix: "hotscreen-js-" });
+// `web/hotscreen_classes.js` は `../../scripts/app.js` を import する（ブラウザでは
+// `/extensions/<name>/...` から配信されるため 2 階層上がルートになる）。
+// ハーネスでも同じ深さに置き、`<tmp>/scripts/app.js` をスタブとして参照させる。
+const pkg = `${tmp}/extensions/maskveil`;
 await Deno.mkdir(`${tmp}/scripts`, { recursive: true });
-await Deno.mkdir(`${tmp}/web`, { recursive: true });
+await Deno.mkdir(pkg, { recursive: true });
 await Deno.writeTextFile(
   `${tmp}/scripts/app.js`,
   "export const app = { registerExtension() {} };\n",
 );
-await Deno.writeTextFile(`${tmp}/web/hotscreen_classes.js`, source);
+await Deno.writeTextFile(`${pkg}/hotscreen_classes.js`, source);
 
-const mod = await import(`file://${tmp}/web/hotscreen_classes.js`);
+const mod = await import(`file://${pkg}/hotscreen_classes.js`);
 const { DETECTION_LABELS, REFINER_LABELS, parseSelection, serializeSelection } =
   mod;
 
