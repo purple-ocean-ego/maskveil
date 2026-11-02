@@ -1,4 +1,4 @@
-"""`core/` が ComfyUI（comfy / torch / PIL / cv2）に依存しないことの検証（AC-8）。
+"""`core/` が ComfyUI（comfy / torch / PIL / cv2）に依存しないことの検証。
 
 `tests/test_imports.py` は AST で import 文を禁止しているが、ここでは**実際に
 import できない環境**（ブロッカー付きサブプロセス）で `core/` が動くことを確かめる。
