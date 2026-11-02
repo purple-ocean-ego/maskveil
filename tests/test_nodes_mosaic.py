@@ -1,4 +1,4 @@
-"""`MosaicByMask` の契約（AC-4）。
+"""`MosaicByMask` の契約。
 
 **判断処理を持たない**こと（`classes` / `conf` / `threshold` / `mask_margin` を持たず、
 `detections` を参照しない）と、ベース画像・マスクの解決順、画素不変を検証する。

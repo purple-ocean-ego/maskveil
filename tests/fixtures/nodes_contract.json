@@ -1,5 +1,5 @@
 {
-  "_comment": "AC1 で確定したノード I/O 契約。実装との不一致はテストが落ちる。",
+  "_comment": "ノード I/O の凍結契約。実装との不一致はテストが落ちる。",
   "nodes": {
     "HotscreenDetector": {
       "title": "Hotscreen Detector",

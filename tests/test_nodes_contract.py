@@ -1,4 +1,4 @@
-"""`HotscreenDetector` の出力契約（AC-2）。
+"""`HotscreenDetector` の出力契約。
 
 推論はモデル依存で遅いため、`detector_for()` をスタブに差し替えて
 **ノードが組み立てる構造**（`HOTSCREEN` / `MASK` / `SEGS` / `detection` / `preview`）を検証する。
@@ -24,7 +24,7 @@ from maskveil.nodes import detector as detector_node
 from maskveil.nodes.detector import HotscreenDetector
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
-CONTRACT = json.loads((PACKAGE / "tests" / "fixtures" / "ac1_contract.json").read_text("utf-8"))
+CONTRACT = json.loads((PACKAGE / "tests" / "fixtures" / "nodes_contract.json").read_text("utf-8"))
 
 MODEL = "det/fake.onnx"
 

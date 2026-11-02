@@ -1,4 +1,4 @@
-"""`HotscreenRefiner` の契約（AC-3）。
+"""`HotscreenRefiner` の契約。
 
 輪郭モデルの推論は約3秒/枚かかるため、`refiner_for()` をスタブに差し替え、
 **置換の対象選別・保持規則・JSON 件数・meta の扱い**を検証する。

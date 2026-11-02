@@ -1,8 +1,8 @@
-"""クラス選択 UI（`web/hotscreen_classes.js`）の検証（AC-5）。
+"""クラス選択 UI（`web/hotscreen_classes.js`）の検証。
 
 JS から Python の定数は読めないため、ラベル配列は**二重管理**になる。
 本テストは JS を解析し、`core` の `LABELS` / `DET_TO_SEG` と順序込みで一致することを
-機械検証する（論点6の決定事項）。ドリフトしたら pytest が落ちる。
+機械検証する。ドリフトしたら pytest が落ちる。
 """
 
 from __future__ import annotations

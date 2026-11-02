@@ -1,8 +1,8 @@
-"""ノード登録の検証（AC-1）。
+"""ノード登録の検証。
 
 ComfyUI のノード一覧に載るために必要な属性（`NODE_CLASS_MAPPINGS` / `CATEGORY` /
 `FUNCTION` / `INPUT_TYPES` / `RETURN_TYPES` / `WEB_DIRECTORY`）を、
-`tests/fixtures/ac1_contract.json`と突き合わせる。
+`tests/fixtures/nodes_contract.json`と突き合わせる。
 
 `folder_paths` は ComfyUI 本体が提供するためスタブを差し込み、
 「ノード側が ComfyUI の実 API をどう使うか」だけを検証する。
@@ -23,7 +23,7 @@ pytest.importorskip("torch", reason="torch は ComfyUI が提供する。torch �
 from maskveil import nodes as nodes_module
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
-CONTRACT = json.loads((PACKAGE / "tests" / "fixtures" / "ac1_contract.json").read_text("utf-8"))
+CONTRACT = json.loads((PACKAGE / "tests" / "fixtures" / "nodes_contract.json").read_text("utf-8"))
 NODES: dict[str, Any] = CONTRACT["nodes"]
 
 HOTSCREEN_MODELS = [
