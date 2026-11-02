@@ -44,6 +44,9 @@ NON_RUNTIME_ENTRIES = {
     "tests",
     "MANIFEST.in",
     "uv.lock",
+    "node.zip",
+    ".coverage",
+    "htmlcov",
 }
 
 
