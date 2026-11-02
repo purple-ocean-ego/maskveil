@@ -1,4 +1,4 @@
-"""ライセンス衛生（AC-7）: AGPL コードを同梱していないことを機械検証する。
+"""ライセンス衛生: AGPL コードを同梱していないことを機械検証する。
 
 本パッケージは **書き出し済み ONNX の推論のみ** を行い、`ultralytics`（AGPL-3.0）を
 import しない。`nodes/` は既存の `tests/test_imports.py` の対象外なので、ここで補う。
@@ -10,7 +10,7 @@ import ast
 import pathlib
 
 import pytest
-import tomllib
+from _toml import tomllib
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
 PY_DIRS = ("core", "nodes", "tools")

@@ -13,6 +13,7 @@ tests/
 .github/
 .gitignore
 MANIFEST.in
+uv.lock
 
 # セッション状態・調査メモ（本プロジェクトの作業規約）
 .session/
