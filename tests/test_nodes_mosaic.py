@@ -11,9 +11,9 @@ from typing import Any
 import numpy as np
 import pytest
 
-torch = pytest.importorskip(
-    "torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ"
-)
+pytest.importorskip("torch", reason="torch は ComfyUI が提供する")
+
+import torch
 
 from maskveil.nodes.mosaic import MosaicByMask
 

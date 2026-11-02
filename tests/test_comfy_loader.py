@@ -27,8 +27,6 @@ import textwrap
 
 import pytest
 
-pytest.importorskip("torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ")
-
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
 
 _LOADER_SCRIPT = textwrap.dedent(
@@ -56,6 +54,9 @@ _LOADER_SCRIPT = textwrap.dedent(
 
 
 def test_package_loads_with_comfyui_loader(tmp_path) -> None:
+    # ComfyUI のローダは `nodes/` を import するため torch が必要。
+    # 一方、相対 import の検証（test_nodes_use_relative_imports）は torch 無しでも実行できる。
+    pytest.importorskip("torch", reason="torch は ComfyUI が提供する")
     """マングル名ロード（`custom_nodes` 非 `sys.path`）で3ノードが公開される。"""
     target = tmp_path / "maskveil"
     shutil.copytree(

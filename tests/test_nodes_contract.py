@@ -15,9 +15,9 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-torch = pytest.importorskip(
-    "torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ"
-)
+pytest.importorskip("torch", reason="torch は ComfyUI が提供する")
+
+import torch
 
 from maskveil.core.types import Detection
 from maskveil.nodes import detector as detector_node
