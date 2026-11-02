@@ -57,6 +57,7 @@ def test_node_settings_cover_both_nodes() -> None:
 
 
 def test_widget_names_match_input_types() -> None:
+    pytest.importorskip("torch", reason="torch は ComfyUI が提供する")
     from maskveil.nodes.detector import HotscreenDetector
     from maskveil.nodes.refiner import HotscreenRefiner
 
@@ -69,6 +70,7 @@ def test_widget_names_match_input_types() -> None:
 
 
 def test_ui_default_matches_sexual_exposed_labels() -> None:
+    pytest.importorskip("torch", reason="torch は ComfyUI が提供する")
     from maskveil.nodes.detector import DETECTOR_CLASSES_UI_DEFAULT
 
     assert ",".join(SEXUAL_EXPOSED_LABELS) == DETECTOR_CLASSES_UI_DEFAULT

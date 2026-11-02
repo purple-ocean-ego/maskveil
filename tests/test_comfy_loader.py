@@ -27,6 +27,8 @@ import textwrap
 
 import pytest
 
+pytest.importorskip("torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ")
+
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
 
 _LOADER_SCRIPT = textwrap.dedent(

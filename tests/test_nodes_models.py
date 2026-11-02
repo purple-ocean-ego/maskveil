@@ -14,6 +14,8 @@ from typing import Any
 
 import pytest
 
+pytest.importorskip("torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ")
+
 from maskveil.core.constants import DET_INPUT_SIZE, SEG_INPUT_SIZE
 from maskveil.nodes import _models
 

@@ -1,0 +1,138 @@
+name: CI
+
+# 目的:
+#   - lint（ruff check / ruff format --check）
+#   - test マトリクス（Python 3.10 / 3.12 × torch 有 / 無）
+#   - 配布物のビルドと内容検査、CLI の起動 smoke
+#
+# torch は ComfyUI が提供する依存のため pyproject には入れない（`nodes = []` の方針）。
+# CI では「torch 無しでもコア＋CLI が動く」「torch 有りならノード契約テストも走る」の
+# 両方を保証する。バージョンは CPU wheel の cp310 対応状況で Python ごとに異なるため、
+# matrix の include で明示的に固定する（更新時は
+# https://download.pytorch.org/whl/cpu/torch/ で cp310 wheel の有無を確認する）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install (locked)
+        run: uv sync --extra dev --locked
+      - name: ruff check
+        run: uv run ruff check .
+      - name: ruff format --check
+        run: uv run ruff format --check .
+
+  test:
+    name: test (py${{ matrix.python }}, torch=${{ matrix.torch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.10"
+            torch: none
+            torch_spec: ""
+          - python: "3.10"
+            torch: cpu
+            torch_spec: "2.14.1+cpu"   # 2.15 系は cp310 wheel を提供しない
+          - python: "3.12"
+            torch: none
+            torch_spec: ""
+          - python: "3.12"
+            torch: cpu
+            torch_spec: "2.15.0+cpu"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+      - name: Install (locked)
+        run: uv sync --extra dev --locked
+      - name: Install CPU torch
+        if: matrix.torch == 'cpu'
+        run: >
+          uv pip install
+          --index-url https://download.pytorch.org/whl/cpu
+          --extra-index-url https://pypi.org/simple
+          --index-strategy unsafe-best-match
+          "torch==${{ matrix.torch_spec }}"
+      - name: Assert torch tests are collected
+        if: matrix.torch == 'cpu'
+        run: |
+          # `pytest.importorskip("torch")` でノード契約テストが黙って落ちないよう、
+          # 収集件数が下限を超えていることを機械的に確認する
+          collected=$(uv run --no-sync pytest --collect-only 2>&1 \
+            | grep -oE '^[0-9]+ tests collected' | grep -oE '^[0-9]+')
+          echo "collected=${collected}"
+          test -n "${collected}"
+          test "${collected}" -ge 431
+      - name: pytest
+        run: uv run --no-sync pytest
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Build sdist and wheel
+        run: uv build
+      - name: Inspect wheel contents
+        run: |
+          python3 - <<'PY'
+          import glob
+          import sys
+          import zipfile
+
+          wheels = glob.glob("dist/*.whl")
+          sdists = glob.glob("dist/*.tar.gz")
+          assert len(wheels) == 1, wheels
+          assert len(sdists) == 1, sdists
+
+          names = set(zipfile.ZipFile(wheels[0]).namelist())
+          required = [
+              "maskveil/__init__.py",
+              "maskveil/core/pipeline.py",
+              "maskveil/nodes/__init__.py",
+              "maskveil/tools/censor.py",
+              "maskveil/web/hotscreen_classes.js",
+          ]
+          missing = [name for name in required if name not in names]
+          assert not missing, f"wheel に欠けているファイル: {missing}"
+
+          # 開発・テスト資材が混入していないこと
+          leaked = [n for n in names if n.startswith(("tests/", "tools/")) or ".onnx" in n]
+          assert not leaked, f"wheel に配布対象外が混入: {leaked}"
+          print(f"wheel OK: {wheels[0]} ({len(names)} entries)")
+          PY
+      - name: CLI smoke (no torch)
+        run: |
+          uv venv /tmp/smoke
+          uv pip install --python /tmp/smoke/bin/python dist/*.whl
+          /tmp/smoke/bin/maskveil --help > /dev/null
+          /tmp/smoke/bin/maskveil-detect --help > /dev/null
+          /tmp/smoke/bin/maskveil-refine --help > /dev/null
+          /tmp/smoke/bin/python -c "import maskveil; print(maskveil.__version__ if hasattr(maskveil, '__version__') else 'ok')"

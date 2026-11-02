@@ -17,7 +17,7 @@ import fnmatch
 import pathlib
 
 import pytest
-import tomllib
+from _toml import tomllib
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
 
@@ -43,6 +43,7 @@ NON_RUNTIME_ENTRIES = {
     "assets",
     "tests",
     "MANIFEST.in",
+    "uv.lock",
 }
 
 

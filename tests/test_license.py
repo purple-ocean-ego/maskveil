@@ -10,7 +10,7 @@ import ast
 import pathlib
 
 import pytest
-import tomllib
+from _toml import tomllib
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
 PY_DIRS = ("core", "nodes", "tools")

@@ -18,6 +18,8 @@ from typing import Any
 
 import pytest
 
+pytest.importorskip("torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ")
+
 from maskveil import nodes as nodes_module
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
