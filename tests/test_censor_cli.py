@@ -12,7 +12,7 @@ import sys
 
 import numpy as np
 import pytest
-import tomllib
+from _toml import tomllib
 from PIL import Image
 
 from maskveil.core.labels import SEXUAL_EXPOSED_LABELS
