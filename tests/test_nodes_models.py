@@ -1,4 +1,4 @@
-"""モデル解決と推論セッションの寿命（AC-6）。
+"""モデル解決と推論セッションの寿命。
 
 実モデルは使わず、`folder_paths` と `Detector` / `Refiner` を差し替えて
 「ComfyUI の実 API をどう使うか」「何をキャッシュするか」を検証する。
@@ -13,6 +13,8 @@ import types
 from typing import Any
 
 import pytest
+
+pytest.importorskip("torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ")
 
 from maskveil.core.constants import DET_INPUT_SIZE, SEG_INPUT_SIZE
 from maskveil.nodes import _models

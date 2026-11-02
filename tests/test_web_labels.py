@@ -1,8 +1,8 @@
-"""クラス選択 UI（`web/hotscreen_classes.js`）の検証（AC-5）。
+"""クラス選択 UI（`web/hotscreen_classes.js`）の検証。
 
 JS から Python の定数は読めないため、ラベル配列は**二重管理**になる。
 本テストは JS を解析し、`core` の `LABELS` / `DET_TO_SEG` と順序込みで一致することを
-機械検証する（論点6の決定事項）。ドリフトしたら pytest が落ちる。
+機械検証する。ドリフトしたら pytest が落ちる。
 """
 
 from __future__ import annotations
@@ -57,6 +57,7 @@ def test_node_settings_cover_both_nodes() -> None:
 
 
 def test_widget_names_match_input_types() -> None:
+    pytest.importorskip("torch", reason="torch は ComfyUI が提供する")
     from maskveil.nodes.detector import HotscreenDetector
     from maskveil.nodes.refiner import HotscreenRefiner
 
@@ -69,6 +70,7 @@ def test_widget_names_match_input_types() -> None:
 
 
 def test_ui_default_matches_sexual_exposed_labels() -> None:
+    pytest.importorskip("torch", reason="torch は ComfyUI が提供する")
     from maskveil.nodes.detector import DETECTOR_CLASSES_UI_DEFAULT
 
     assert ",".join(SEXUAL_EXPOSED_LABELS) == DETECTOR_CLASSES_UI_DEFAULT

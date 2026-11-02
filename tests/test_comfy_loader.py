@@ -1,4 +1,4 @@
-"""ComfyUI の実際のローダ手順でパッケージを読み込めることの検証（AC-1 / C-1）。
+"""ComfyUI の実際のローダ手順でパッケージを読み込めることの検証。
 
 ComfyUI はディレクトリ型のカスタムノードを
 
@@ -26,6 +26,8 @@ import sys
 import textwrap
 
 import pytest
+
+pytest.importorskip("torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ")
 
 PACKAGE = pathlib.Path(__file__).resolve().parents[1]
 
