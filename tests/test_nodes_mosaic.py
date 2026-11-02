@@ -1,4 +1,4 @@
-"""`MosaicByMask` の契約（AC-4）。
+"""`MosaicByMask` の契約。
 
 **判断処理を持たない**こと（`classes` / `conf` / `threshold` / `mask_margin` を持たず、
 `detections` を参照しない）と、ベース画像・マスクの解決順、画素不変を検証する。
@@ -10,7 +10,10 @@ from typing import Any
 
 import numpy as np
 import pytest
-import torch
+
+torch = pytest.importorskip(
+    "torch", reason="torch は ComfyUI が提供する。torch 無しの CI レグではスキップ"
+)
 
 from maskveil.nodes.mosaic import MosaicByMask
 
