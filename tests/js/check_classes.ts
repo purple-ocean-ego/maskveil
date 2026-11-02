@@ -1,4 +1,4 @@
-// クラス選択 UI の挙動検証ハーネス（AC-5 / T-09）
+// クラス選択 UI の挙動検証ハーネス
 //
 // `web/hotscreen_classes.js` は ComfyUI の `../../scripts/app.js` を import するため、
 // 実行時にだけ `scripts/app.js` のスタブを持つ一時ディレクトリへ複製して読み込む。

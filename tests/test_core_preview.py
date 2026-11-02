@@ -1,4 +1,4 @@
-"""`core/preview.py` の検証（AC-2 / AC-4 のプレビュー経路）。"""
+"""`core/preview.py` の検証（プレビュー経路の回帰）。"""
 
 from __future__ import annotations
 
