@@ -25,6 +25,7 @@ assets/
 # ビルド成果物・キャッシュ
 build/
 dist/
+node.zip
 *.egg-info/
 __pycache__/
 *.py[cod]
