@@ -59,6 +59,8 @@ jobs:
   publish-pypi:
     name: publish to PyPI
     needs: build
+    # タグ起点のみ公開する（workflow_dispatch をブランチから実行しても PyPI へは出さない）
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
