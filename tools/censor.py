@@ -41,10 +41,12 @@ from maskveil.core.raster import compose_masks, expand_detections
 from maskveil.core.refiner import Refiner
 from maskveil.core.types import ModelInfo
 from maskveil.tools._common import (
+    add_refiner_input_size_arg,
     add_threshold_args,
     load_rgb,
     report_write_error,
     save_png,
+    validate_input_size,
     validate_thresholds,
     write_json,
 )
@@ -125,6 +127,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--refiner-model",
         help="輪郭モデル(.onnx)の絶対パス（--refine のとき必須）",
     )
+    add_refiner_input_size_arg(parser)
     parser.add_argument(
         "--classes",
         default=DEFAULT_CLASSES,
@@ -200,6 +203,9 @@ def _validate_args(parser: argparse.ArgumentParser, args: argparse.Namespace) ->
         parser.error("--refiner-model is required when --refine is given")
     if args.refiner_model and not args.refine:
         parser.error("--refiner-model requires --refine (pass --refine to enable refinement)")
+    if args.refiner_input_size is not None and not args.refine:
+        parser.error("--refiner-input-size requires --refine (pass --refine to enable refinement)")
+    validate_input_size(parser, "--refiner-input-size", args.refiner_input_size)
 
     input_path = Path(args.input).expanduser().resolve()
     if not input_path.exists():
@@ -221,11 +227,25 @@ def _model_info(path: Path, input_size: int) -> dict[str, Any]:
     ).to_dict()
 
 
+def _refiner_error_message(exc: ValueError, input_size: int | None) -> str:
+    """輪郭モデルの読込エラーに、引数指定で解決できる場合だけ対処を併記する。
+
+    `core/onnx_utils.py` は「動的入力サイズ」と「非正方形入力」の両方を `ValueError` で
+    投げるが、後者は入力サイズを指定しても解決しないため案内を付けない
+    （`core/` は本WPの対象外のため、メッセージの内容で判別する）。
+    """
+    message = str(exc)
+    if input_size is None and "dynamic input size" in message:
+        return f"{message} (pass --refiner-input-size to set the refiner input size)"
+    return message
+
+
 def _load_models(
     parser: argparse.ArgumentParser,
     *,
     det_model: str,
     refiner_model: str | None,
+    refiner_input_size: int | None,
     refine: bool,
 ) -> tuple[Detector, Refiner | None, dict[str, Any]]:
     """モデルを読み込み、レポート用の情報も返す（パス不正は exit 2、読込失敗は例外）。"""
@@ -250,9 +270,9 @@ def _load_models(
     refiner: Refiner | None = None
     if seg_path is not None:
         try:
-            refiner = Refiner(seg_path)
+            refiner = Refiner(seg_path, input_size=refiner_input_size)
         except ValueError as exc:
-            parser.error(str(exc))
+            parser.error(_refiner_error_message(exc, refiner_input_size))
         except Exception as exc:  # noqa: BLE001 - モデル破損などは実行時エラー
             raise ModelLoadError(f"failed to load refiner: {exc}") from exc
         models["seg"] = _model_info(seg_path, refiner.input_size)
@@ -584,6 +604,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser,
             det_model=args.det_model,
             refiner_model=args.refiner_model,
+            refiner_input_size=args.refiner_input_size,
             refine=bool(args.refine),
         )
     except ModelLoadError as exc:

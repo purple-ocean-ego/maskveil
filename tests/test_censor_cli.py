@@ -113,6 +113,36 @@ def _fake_refiner_class(candidates):
     return _FakeRefiner
 
 
+def _spy_refiner_class(candidates, calls: list[dict]):
+    """受け取った引数を記録する `Refiner` 代替を作る（配線の検証用）。"""
+
+    class _SpyRefiner:
+        def __init__(self, model_path, *args, **kwargs) -> None:
+            value = kwargs.get("input_size")
+            self.input_size = 1280 if value is None else int(value)
+            calls.append({"model": str(model_path), "args": args, "kwargs": dict(kwargs)})
+
+        def detect(self, image, *, class_ids, conf, iou):
+            return list(candidates)
+
+    return _SpyRefiner
+
+
+def _dynamic_refiner_class():
+    """動的入力のモデルを模し、入力サイズ未指定なら `ValueError` を投げる代替を作る。"""
+
+    class _DynamicRefiner:
+        def __init__(self, model_path, *, input_size=None) -> None:
+            if input_size is None:
+                raise ValueError("refiner model has a dynamic input size; specify it explicitly")
+            self.input_size = int(input_size)
+
+        def detect(self, image, *, class_ids, conf, iou):
+            return []
+
+    return _DynamicRefiner
+
+
 def _prepare(tmp_path, *, refine: bool = False):
     """入力画像とダミーモデルを用意する。"""
     image_path = tmp_path / "sample.png"
@@ -230,6 +260,236 @@ def test_refine_changes_shape_and_matches_expected_pixels(tmp_path, monkeypatch,
     )
     assert np.array_equal(actual, _expected_pixels(image, [refined], 16))
     assert not np.array_equal(actual, _expected_pixels(image, [detection], 16))
+
+
+# --- 輪郭モデルの入力サイズ（--refiner-input-size） ------------------------
+
+
+def test_refiner_receives_input_size_when_specified(tmp_path, monkeypatch, capsys) -> None:
+    """
+    ユースケース: 動的入力の輪郭モデルへ入力サイズを明示して実行する
+    検証意図: 指定値が `Refiner` にキーワード引数として渡り、レポートにも実効値が残る
+    """
+    image_path, _, det_model, seg_model = _prepare(tmp_path, refine=True)
+    calls: list[dict] = []
+    monkeypatch.setattr(censor_module, "Detector", _fake_detector_class([]))
+    monkeypatch.setattr(censor_module, "Refiner", _spy_refiner_class([], calls))
+
+    exit_code, payload = _run_json(
+        [
+            str(image_path),
+            "--det-model",
+            str(det_model),
+            "--refine",
+            "--refiner-model",
+            str(seg_model),
+            "--refiner-input-size",
+            "1280",
+            "--output-dir",
+            str(tmp_path / "out"),
+        ],
+        capsys,
+    )
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert calls[0]["args"] == ()  # 位置引数で渡していない（キーワード配線の確認）
+    assert calls[0]["kwargs"]["input_size"] == 1280
+    assert payload["model"]["seg"]["input_size"] == 1280
+
+
+def test_refiner_receives_none_when_input_size_omitted(tmp_path, monkeypatch, capsys) -> None:
+    """
+    ユースケース: 入力サイズを省略して実行する（静的なモデル）
+    検証意図: 省略時は `None` が渡り、入力サイズの解決はモデル側に委ねられる
+    """
+    image_path, _, det_model, seg_model = _prepare(tmp_path, refine=True)
+    calls: list[dict] = []
+    monkeypatch.setattr(censor_module, "Detector", _fake_detector_class([]))
+    monkeypatch.setattr(censor_module, "Refiner", _spy_refiner_class([], calls))
+
+    exit_code, _ = _run_json(
+        [
+            str(image_path),
+            "--det-model",
+            str(det_model),
+            "--refine",
+            "--refiner-model",
+            str(seg_model),
+            "--output-dir",
+            str(tmp_path / "out"),
+        ],
+        capsys,
+    )
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert calls[0]["kwargs"]["input_size"] is None
+
+
+def test_dynamic_refiner_without_input_size_exits_with_2(tmp_path, monkeypatch, capsys) -> None:
+    """
+    ユースケース: 動的入力の輪郭モデルを入力サイズ未指定で使う
+    検証意図: 引数エラー（exit 2）になり、stderr が対処（--refiner-input-size）を示す
+    """
+    image_path, _, det_model, seg_model = _prepare(tmp_path, refine=True)
+    monkeypatch.setattr(censor_module, "Detector", _fake_detector_class([]))
+    monkeypatch.setattr(censor_module, "Refiner", _dynamic_refiner_class())
+
+    with pytest.raises(SystemExit) as excinfo:
+        _run(
+            [
+                str(image_path),
+                "--det-model",
+                str(det_model),
+                "--refine",
+                "--refiner-model",
+                str(seg_model),
+                "--output-dir",
+                str(tmp_path / "out"),
+            ]
+        )
+
+    assert excinfo.value.code == 2
+    err = capsys.readouterr().err
+    assert "dynamic input size" in err  # 原因
+    # usage 行にもフラグ名は現れるため、ヒント固有の語句で検証する
+    assert "pass --refiner-input-size" in err  # 対処
+
+
+def test_refiner_input_size_mismatch_exits_with_2_without_hint(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """
+    ユースケース: 静的入力の輪郭モデルへ、モデルと異なる入力サイズを指定する
+    検証意図: 不一致は exit 2 になり、指定済みのフラグを再度促すヒントは出さない
+
+    ヒントを無条件に付与する退行（利用者が既に指定したフラグを再要求する）を検出する。
+    """
+
+    class _RejectingRefiner:
+        def __init__(self, model_path, *, input_size=None) -> None:
+            raise ValueError("refiner model expects input size 1280, got 640")
+
+    image_path, _, det_model, seg_model = _prepare(tmp_path, refine=True)
+    monkeypatch.setattr(censor_module, "Detector", _fake_detector_class([]))
+    monkeypatch.setattr(censor_module, "Refiner", _RejectingRefiner)
+
+    with pytest.raises(SystemExit) as excinfo:
+        _run(
+            [
+                str(image_path),
+                "--det-model",
+                str(det_model),
+                "--refine",
+                "--refiner-model",
+                str(seg_model),
+                "--refiner-input-size",
+                "640",
+                "--output-dir",
+                str(tmp_path / "out"),
+            ]
+        )
+
+    assert excinfo.value.code == 2
+    err = capsys.readouterr().err
+    assert "expects input size 1280, got 640" in err
+    assert "pass --refiner-input-size" not in err
+
+
+def test_non_square_refiner_error_has_no_input_size_hint(tmp_path, monkeypatch, capsys) -> None:
+    """
+    ユースケース: 非正方形入力の輪郭モデルを使う（入力サイズ指定では解決できない）
+    検証意図: 解決手段にならない `--refiner-input-size` の案内を出さない
+    """
+
+    class _NonSquareRefiner:
+        def __init__(self, model_path, *, input_size=None) -> None:
+            raise ValueError("refiner model has a non-square input: 640x1280")
+
+    image_path, _, det_model, seg_model = _prepare(tmp_path, refine=True)
+    monkeypatch.setattr(censor_module, "Detector", _fake_detector_class([]))
+    monkeypatch.setattr(censor_module, "Refiner", _NonSquareRefiner)
+
+    with pytest.raises(SystemExit) as excinfo:
+        _run(
+            [
+                str(image_path),
+                "--det-model",
+                str(det_model),
+                "--refine",
+                "--refiner-model",
+                str(seg_model),
+                "--output-dir",
+                str(tmp_path / "out"),
+            ]
+        )
+
+    assert excinfo.value.code == 2
+    err = capsys.readouterr().err
+    assert "non-square input" in err
+    assert "pass --refiner-input-size" not in err
+
+
+def test_dynamic_refiner_with_input_size_succeeds(tmp_path, monkeypatch, capsys) -> None:
+    """
+    ユースケース: 動的入力の輪郭モデルへ入力サイズを指定する
+    検証意図: 同じモデルでも指定すれば読み込みが通り、処理が完走する（exit 0）
+    """
+    image_path, _, det_model, seg_model = _prepare(tmp_path, refine=True)
+    monkeypatch.setattr(censor_module, "Detector", _fake_detector_class([]))
+    monkeypatch.setattr(censor_module, "Refiner", _dynamic_refiner_class())
+
+    exit_code, payload = _run_json(
+        [
+            str(image_path),
+            "--det-model",
+            str(det_model),
+            "--refine",
+            "--refiner-model",
+            str(seg_model),
+            "--refiner-input-size",
+            "1280",
+            "--output-dir",
+            str(tmp_path / "out"),
+        ],
+        capsys,
+    )
+
+    assert exit_code == 0
+    assert payload["model"]["seg"]["input_size"] == 1280
+
+
+@pytest.mark.parametrize("size", ["0", "-1"])
+def test_refiner_input_size_must_be_positive(tmp_path, size, capsys) -> None:
+    """
+    ユースケース: 0 や負の値を入力サイズとして指定する
+    検証意図: 引数エラー（exit 2）として拒否し、画像処理を開始しない
+
+    `maskveil-detect --input-size` と同じ規則に揃える（動的入力のモデルでは
+    そのまま通ってしまい、推論時の失敗＝exit 1 に化けるため）。
+    """
+    image_path, _, det_model, seg_model = _prepare(tmp_path, refine=True)
+
+    with pytest.raises(SystemExit) as excinfo:
+        _run(
+            [
+                str(image_path),
+                "--det-model",
+                str(det_model),
+                "--refine",
+                "--refiner-model",
+                str(seg_model),
+                "--refiner-input-size",
+                size,
+                "--output-dir",
+                str(tmp_path / "out"),
+            ]
+        )
+
+    assert excinfo.value.code == 2
+    assert "--refiner-input-size must be positive" in capsys.readouterr().err
+    assert not (tmp_path / "out").exists()
 
 
 # --- AC2: 再帰バッチ・命名・上書き回避 ------------------------------------
@@ -644,6 +904,7 @@ def test_exit_code_is_one_when_any_fails(tmp_path, monkeypatch, capsys) -> None:
         ({"extra": ["--iou", "0"]}, "iou 範囲外"),
         ({"extra": ["--refine"]}, "--refine で --refiner-model なし"),
         ({"extra": ["--refiner-model"]}, "--refiner-model だけ指定"),
+        ({"extra": ["--refiner-input-size", "640"]}, "--refine なしで --refiner-input-size"),
         ({"extra": ["--classes", "NOT_A_CLASS"]}, "未知のクラス"),
         ({"input": "missing.png"}, "入力が存在しない"),
         ({"input": "note.txt"}, "未対応の拡張子"),
@@ -1423,6 +1684,7 @@ def test_help_lists_contract_options(capsys) -> None:
         "--det-model",
         "--refine",
         "--refiner-model",
+        "--refiner-input-size",
         "--classes",
         "--conf",
         "--iou",

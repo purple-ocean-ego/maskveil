@@ -39,8 +39,10 @@ from maskveil.core.pipeline import (
 from maskveil.core.refiner import Refiner
 from maskveil.core.types import Detection, MaskSource, ModelInfo, Polygon
 from maskveil.tools._common import (
+    add_refiner_input_size_arg,
     load_rgb,
     report_write_error,
+    validate_input_size,
     validate_thresholds,
     write_json,
 )
@@ -59,12 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--refiner-model",
         help="輪郭モデル(.onnx)の絶対パス（--mask-source model_seg のとき必須）",
     )
-    parser.add_argument(
-        "--refiner-input-size",
-        type=int,
-        default=None,
-        help="輪郭モデルの入力一辺（省略時はモデルから取得）",
-    )
+    add_refiner_input_size_arg(parser)
     parser.add_argument(
         "--classes",
         help="絞り込む検出クラス（名前 / ID / all）。省略時は入力JSONの全検出を対象",
@@ -198,6 +195,7 @@ def _resolve_options(
 ) -> tuple[frozenset[int] | None, Path | None, RefineOptions]:
     """引数を検証し、実行オプションとモデルパスを返す（不正なら exit 2）。"""
     validate_thresholds(parser, conf=args.conf, iou=args.iou)
+    validate_input_size(parser, "--refiner-input-size", args.refiner_input_size)
 
     allowed: frozenset[int] | None = None
     if args.classes:

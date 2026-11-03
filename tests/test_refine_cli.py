@@ -264,3 +264,12 @@ def test_refiner_input_size_mismatch_exits_with_2(tmp_path, monkeypatch) -> None
             _payload(image),
         )
     assert excinfo.value.code == 2
+
+
+@pytest.mark.parametrize("size", ["0", "-1"])
+def test_refiner_input_size_must_be_positive(monkeypatch, capsys, size: str) -> None:
+    """0 や負の入力サイズは引数エラー（exit 2）として拒否する。"""
+    with pytest.raises(SystemExit) as excinfo:
+        _run(monkeypatch, ["--refiner-input-size", size], "{}")
+    assert excinfo.value.code == 2
+    assert "--refiner-input-size must be positive" in capsys.readouterr().err

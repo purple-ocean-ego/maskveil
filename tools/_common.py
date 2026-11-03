@@ -90,6 +90,30 @@ def validate_thresholds(parser: argparse.ArgumentParser, *, conf: float, iou: fl
         parser.error("--iou must be within (0.0, 1.0]")
 
 
+def add_refiner_input_size_arg(parser: argparse.ArgumentParser) -> None:
+    """`--refiner-input-size` を追加する（`censor` / `refine` で定義を共有する）。"""
+    parser.add_argument(
+        "--refiner-input-size",
+        type=int,
+        default=None,
+        help="輪郭モデルの入力一辺（省略時はモデルから取得）",
+    )
+
+
+def validate_input_size(
+    parser: argparse.ArgumentParser,
+    option: str,
+    value: int | None,
+) -> None:
+    """入力サイズが正値かを検証する（不正なら exit 2）。
+
+    未指定（`None`）は許す。動的入力のモデルでは指定が必須になるため、
+    `0` や負値をそのまま通すと推論時の失敗（終了コード 1）に化ける。
+    """
+    if value is not None and value <= 0:
+        parser.error(f"{option} must be positive")
+
+
 def write_json(payload: dict[str, Any], *, output: str | None, pretty: bool) -> None:
     """JSON を標準出力またはファイルへ書く（ファイルは原子的に置換）。
 
