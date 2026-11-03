@@ -95,10 +95,12 @@ curl -L -o "$SEG_DIR/nsfw-anime-xl-x1280.onnx" \
 
 > **配布元の ONNX は動的入力です。** このファイルは `dynamic=True` / `half=True`（ultralytics 8.4.52）で
 > 書き出されており、入力形状が `[batch, 3, height, width]` です。
-> **`maskveil-refine` は `--refiner-input-size 1280` を明示しないと「動的入力サイズ」のエラーで停止します。**
-> 統合 CLI `maskveil`（`censor`）はこのフラグを持たないため、**経路A のモデルでは `--refine` を使えません**。
+> **動的入力のモデルは、入力サイズの明示が必須です。** CLI（`maskveil` / `maskveil-refine`）では
+> `--refiner-input-size 1280` を渡してください。省略すると「動的入力サイズ」のエラーで `exit 2` になります
+> （`maskveil-refine` がモデルを読み込むのは、輪郭化対象の検出がある場合です）。
 > ComfyUI ノードは既定で 1280 を渡すため、そのまま動作します。
-> 静的・fp32 のモデルが必要な場合（統合 CLI で `--refine` したい場合）は、経路B で `.pt` から再変換してください。
+> 入力サイズの自動取得に頼りたい場合（`--refiner-input-size` を毎回書かずに済ませたい場合）や、
+> fp32 精度が必要な場合は、経路B で `.pt` から再変換してください（静的モデルでは指定を省略できます）。
 
 #### 輪郭モデル: 経路B（`.pt` から ONNX へ変換）
 
@@ -280,16 +282,19 @@ PY
 
 #### 配布元 ONNX（126MB）の検証結果
 
-経路A のファイル（`nsfw-anime-xl-x1280.onnx` / 126,350,117 B）を実際に配置して確認しました（2026-11-02）。
+経路A のファイル（`nsfw-anime-xl-x1280.onnx` / 126,350,117 B）を実際に配置して確認しました。
+統合 CLI の行は、`--refiner-input-size` 対応後（2026-11-03）の実測です。
 
 | 実行 | 結果 |
 | --- | --- |
 | CLI `refine`（入力サイズ未指定） | **エラー**: `refiner model has a dynamic input size; specify it explicitly` |
 | CLI `refine --refiner-input-size 1280` | 成功。検出7件のうち **3件**に `mask_source=model_seg`（FEMALE_FACE / ANUS_EXPOSED / FEMALE_GENITALIA_EXPOSED）。ローカル変換版と同じ3件 |
+| 統合 CLI `censor --refine --refiner-input-size 1280` | 成功（`exit 0`）。1コマンドで完走し、レポートの `model.seg.input_size` が **1280**。入力サイズを省略すると同じ「動的入力サイズ」エラーで `exit 2` |
 | ComfyUI `censor-nsfw-refiner.json`（1枚） | **1枚入力 → 1枚出力**で完走。モザイク適用を画素差分で確認（最大差 209） |
 
-→ 動作しますが、**`maskveil-refine` では入力サイズの明示が必須**、**統合 CLI `maskveil`（`--refine`）では使えません**。
-統合 CLI で輪郭を使いたい場合は、経路B の静的モデルを用意してください。
+→ 動作しますが、**動的入力のモデルは入力サイズの明示が必須**です。`maskveil`（統合 CLI）も
+`maskveil-refine` も `--refiner-input-size 1280` を受け付けるため、同じ1コマンド体系で扱えます。
+経路B の静的モデルを使う場合は指定を省略できます。
 
 ### モデルの差し替え可能性
 
@@ -415,10 +420,16 @@ maskveil /abs/input.png --det-model /abs/det.onnx --refine \
   --refiner-model /abs/seg/nsfw-anime-xl-x1280.onnx
 ```
 
-> **統合 CLI の `--refine` は動的入力の輪郭モデルに未対応です。** `maskveil` には `--refiner-input-size` が無いため、
-> 経路A の ONNX（動的入力）を渡すと `refiner model has a dynamic input size` で `exit 2` になります。
-> 経路A を使う場合は上の 1) → 2) の2コマンド（`maskveil-refine --refiner-input-size 1280`）に分けるか、
-> 経路B の静的モデルを使ってください。
+> **動的入力の輪郭モデル（経路A）は `--refiner-input-size` を明示してください。** 省略すると
+> `refiner model has a dynamic input size` で `exit 2` になります（エラー文には対処として
+> `--refiner-input-size` が併記されます）。経路A の ONNX は次のように指定します。
+>
+> ```bash
+> maskveil /abs/input.png --det-model /abs/det.onnx --refine \
+>   --refiner-model /abs/seg/nsfw-anime-xl-x1280.onnx --refiner-input-size 1280
+> ```
+>
+> 静的入力のモデル（経路B）では省略できます（入力サイズは ONNX から取得）。
 
 `python -m maskveil.tools.detect` / `.refine` / `.censor` でも同じことができます。
 
@@ -442,7 +453,7 @@ maskveil /abs/input.png --det-model /abs/det.onnx --refine \
 | オプション | 既定 | 説明 |
 | --- | --- | --- |
 | `--refiner-model` | （必須） | `--mask-source model_seg` のとき必須。絶対パス |
-| `--refiner-input-size` | モデルから取得 | 輪郭モデルの入力一辺。指定時はモデルと一致するか検証 |
+| `--refiner-input-size` | モデルから取得 | 輪郭モデルの入力一辺。動的入力のモデルでは必須。静的入力のときは指定値と一致するか検証（`0`・負値は `exit 2`） |
 | `--classes` | 入力JSONの全検出 | 輪郭化する検出クラスを限定 |
 | `--mask-source` | `model_seg` | `bbox_ellipse` は**デバッグ用**（内接楕円） |
 | `--seg-crop` | false | 検出 bbox 周辺をクロップして推論（計測用。1検出ごとに推論するため遅い） |
@@ -462,6 +473,7 @@ maskveil /abs/input.png --det-model /abs/det.onnx --refine \
 | `--det-model` | （必須） | 検出モデルの**絶対パス** |
 | `--refine` | false | 輪郭モデルでマスク形状を精密化する |
 | `--refiner-model` | - | `--refine` のとき必須（絶対パス）。`--refine` 無しで渡すと `exit 2` |
+| `--refiner-input-size` | モデルから取得 | 輪郭モデルの入力一辺。動的入力のモデルでは必須。静的入力のときは指定値と一致するか検証（`0`・負値と `--refine` 無しは `exit 2`） |
 | `--classes` | 性器 EXPOSED 2クラス | 名前 / ID / `all` のカンマ区切り |
 | `--conf` / `--iou` | 0.2 / 0.45 | 検出・輪郭の閾値 |
 | `--block-size` | **48** | モザイクのブロック辺（2–128） |
@@ -549,9 +561,11 @@ maskveil /abs/input.png --det-model /abs/det.onnx --refine \
 - 輪郭の bbox クロップはプロトタイプ格子（320）で量子化するため、seg 自身の bbox に対しても
   最大 1 格子（入力座標で約 4px）外へ張り出すことがある（安全側の誤差）。
 - `--input-size` / `--refiner-input-size` は、**静的入力**のモデルでは省略時に ONNX から取得する。
-  動的入力のモデルでは**明示指定が必須**（省略するとエラー）。静的入力のモデルで指定値が
-  食い違う場合は、推論前に明確なエラーで停止する。
-- 統合 CLI `maskveil` は `--refiner-input-size` を持たないため、動的入力の輪郭モデルには未対応。
+  動的入力のモデルでは**明示指定が必須**（省略するとエラー）。`0` や負値は引数エラー（`exit 2`）。
+  静的入力のモデルで指定値が食い違う場合は、推論前に明確なエラーで停止する。
+- **輪郭モデルの入力サイズ（`--refiner-input-size`）の規則は3 CLI で共通。** 一方、検出モデルの
+  入力サイズは `maskveil-detect` が `--input-size` で受け、統合 CLI `maskveil` は ONNX から解決する
+  （指定できない）。
 - 座標復元は軸別倍率（`scale_x` / `scale_y`）で行い、letterbox の往復誤差を出さない。
 - NMS は **class-aware**（同一 bbox でもクラスが違えば残す）。隠蔽漏れを避けるため、
   モデル作者実装のクラス非依存 NMS とは意図的に異なる。
@@ -624,6 +638,7 @@ ruff format --check .
 ## 制約
 
 - 動作確認している輪郭 ONNX は、`ultralytics 8.4.189` で `.pt` から書き出した**静的入力（1280）**版です（経路B）。
-  HF 配布元の ONNX（経路A）は**動的入力**のため、CLI では入力サイズの明示が必要で、統合 CLI の `--refine` は使えません。
+  HF 配布元の ONNX（経路A）は**動的入力**のため、CLI では `--refiner-input-size 1280` の明示が必要です
+  （統合 CLI `maskveil` も `--refine` と併せて同じフラグを受け付けます）。
 - 輪郭が対応しない部位（臀部・脇・腹・足・眼・COVERED 系）は bbox 形状しか持ちません。
 - ComfyUI ノードは GPU 推論を前提にしていません（onnxruntime の CPU 実行で動作します）。
