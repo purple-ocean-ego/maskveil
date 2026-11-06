@@ -54,7 +54,7 @@ from maskveil.tools.paths import InvalidPathError, sha256_file, validate_model_p
 
 SCHEMA_VERSION = 1
 TOOL_NAME = "censor"
-TOOL_VERSION = "0.1.0"
+TOOL_VERSION = "1.0.0"
 """レポートの生成元を特定するための CLI 版（`pyproject.toml` と一致させる）。"""
 
 DEFAULT_CLASSES = ",".join(SEXUAL_EXPOSED_LABELS)
